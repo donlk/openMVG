@@ -131,13 +131,16 @@ bool exportToMVE2Format(
         else // (no distortion)
         {
           // If extensions match, copy the PNG image
-          if (stlplus::extension_part(srcImage) == "PNG" ||
+          if(stlplus::extension_part(srcImage) == "PNG" ||
             stlplus::extension_part(srcImage) == "png")
           {
             stlplus::file_copy(srcImage, dstImage);
-          }
-          else
-          {
+          }else if(stlplus::extension_part(srcImage) == "JPG"
+		|| stlplus::extension_part(srcImage) == "jpg") {
+		const std::string dstImage = stlplus::create_filespec(
+			stlplus::folder_append_separator(sOutViewIteratorDirectory), "undistorted", "jpg");
+		stlplus::file_copy(srcImage, dstImage);
+	  }else{
             ReadImage( srcImage.c_str(), &image);
             WriteImage( dstImage.c_str(), image);
           }

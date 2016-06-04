@@ -60,7 +60,6 @@ void ImageCollectionGeometricFilter::Robust_model_estimation
   const double d_distance_ratio
 )
 {
-  C_Progress_display my_progress_bar( putative_matches.size() );
 
 #ifdef OPENMVG_USE_OPENMP
 #pragma omp parallel for schedule(dynamic)
@@ -91,15 +90,10 @@ void ImageCollectionGeometricFilter::Robust_model_estimation
 #pragma omp critical
 #endif
         {
+          std::cout << "[" << current_pair.first << ", " << current_pair.second << "]" << " " << putative_inliers.size() << " filtered\n";
           _map_GeometricMatches.insert(std::make_pair(current_pair, std::move(putative_inliers)));
         }
       }
-    }
-#ifdef OPENMVG_USE_OPENMP
-#pragma omp critical
-#endif
-    {
-      ++my_progress_bar;
     }
   }
 }

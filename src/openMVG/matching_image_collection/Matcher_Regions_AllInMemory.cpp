@@ -39,8 +39,6 @@ void Matcher_Regions_AllInMemory::Match(
   const bool b_multithreaded_pair_search = (eMatcherType_ == CASCADE_HASHING_L2);
   // -> set to true for CASCADE_HASHING_L2, since OpenMP instructions are not used in this matcher
 
-  C_Progress_display my_progress_bar( pairs.size() );
-
   // Sort pairs according the first index to minimize the MatcherT build operations
   typedef std::map<size_t, std::vector<size_t> > Map_vectorT;
   Map_vectorT map_Pairs;
@@ -59,7 +57,6 @@ void Matcher_Regions_AllInMemory::Match(
     const features::Regions & regionsI = *regions_provider->regions_per_view.at(I).get();
     if (regionsI.RegionCount() == 0)
     {
-      my_progress_bar += indexToCompare.size();
       continue;
     }
 
@@ -80,7 +77,6 @@ void Matcher_Regions_AllInMemory::Match(
 #ifdef OPENMVG_USE_OPENMP
   #pragma omp critical
 #endif
-        ++my_progress_bar;
         continue;
       }
 
@@ -91,7 +87,7 @@ void Matcher_Regions_AllInMemory::Match(
   #pragma omp critical
 #endif
       {
-        ++my_progress_bar;
+	std::cout << "[" << I << ", " << J << "]" << " " << vec_putatives_matches.size() << " matches\n";
         if (!vec_putatives_matches.empty())
         {
           map_PutativesMatches.insert( make_pair( make_pair(I,J), std::move(vec_putatives_matches) ));

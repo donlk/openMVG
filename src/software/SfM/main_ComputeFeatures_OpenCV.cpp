@@ -28,6 +28,7 @@
 
 #include <cstdlib>
 #include <fstream>
+#include <chrono>
 
 using namespace openMVG;
 using namespace openMVG::image;
@@ -90,8 +91,25 @@ public:
     std::vector< cv::KeyPoint > vec_keypoints;
     cv::Mat m_desc;
 
-    cv::Ptr<cv::Feature2D> extractor = cv::AKAZE::create(cv::AKAZE::DESCRIPTOR_KAZE);
-    extractor->detectAndCompute(img, m_mask, vec_keypoints, m_desc);
+    cv::Ptr < cv::Feature2D > extractor = cv::AKAZE::create(
+        cv::AKAZE::DESCRIPTOR_KAZE, 0, 3, 0.0002f, 4, 4, cv::KAZE::DIFF_PM_G2
+    );
+    extractor->detectAndCompute(img, cv::Mat(), vec_keypoints, m_desc);
+
+    size_t featureLimit = 200000;
+    std::vector<cv::KeyPoint> vec_keypoints_partial;
+    vec_keypoints_partial.reserve(featureLimit);
+    for(size_t i = 0; i < vec_keypoints.size() && i < featureLimit; ++i){
+        vec_keypoints_partial.push_back(vec_keypoints.at(i));
+    }
+
+    if(vec_keypoints.size() > featureLimit){
+        std::cout << vec_keypoints_partial.size() << " / " << vec_keypoints.size() << " features - ";
+    }else{
+        std::cout << vec_keypoints_partial.size() << " features - ";
+    }
+
+    vec_keypoints_partial.swap(vec_keypoints);
 
     if (!vec_keypoints.empty())
     {
@@ -210,6 +228,8 @@ public:
       }
       regionsCasted->Descriptors().push_back(desc);
     }
+
+    std::cout << "features - " << v_keypoints.size() << std::endl;
 
     return true;
   };
@@ -376,11 +396,10 @@ int main(int argc, char **argv)
     if(stlplus::file_exists(sGlobalMask_filename))
       ReadImage(sGlobalMask_filename.c_str(), &globalMask);
 
-    C_Progress_display my_progress_bar( sfm_data.GetViews().size(),
       std::cout, "\n- EXTRACT FEATURES -\n" );
     for(Views::const_iterator iterViews = sfm_data.views.begin();
         iterViews != sfm_data.views.end();
-        ++iterViews, ++my_progress_bar)
+        ++iterViews)
     {
       const View * view = iterViews->second.get();
       const std::string
@@ -410,10 +429,15 @@ int main(int argc, char **argv)
         if(imageMask.Width() == imageGray.Width() && imageMask.Height() == imageGray.Height())
           mask = &imageMask;
 
+	auto start = std::chrono::system_clock::now();
+
         // Compute features and descriptors and export them to files
         std::unique_ptr<Regions> regions;
         image_describer->Describe(imageGray, regions, mask);
         image_describer->Save(regions.get(), sFeat, sDesc);
+
+	auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
+	std::cout << elapsed.count() << "ms" << std::endl;
       }
     }
     std::cout << "Task done in (s): " << timer.elapsed() << std::endl;
