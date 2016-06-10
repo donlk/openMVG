@@ -396,7 +396,7 @@ int main(int argc, char **argv)
     if(stlplus::file_exists(sGlobalMask_filename))
       ReadImage(sGlobalMask_filename.c_str(), &globalMask);
 
-      std::cout, "\n- EXTRACT FEATURES -\n" );
+    std::cout << "\n- EXTRACT FEATURES -\n";
     for(Views::const_iterator iterViews = sfm_data.views.begin();
         iterViews != sfm_data.views.end();
         ++iterViews)
