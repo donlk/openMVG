@@ -74,9 +74,6 @@ void Matcher_Regions_AllInMemory::Match(
       if (regionsJ.RegionCount() == 0
           || regionsI.Type_id() != regionsJ.Type_id())
       {
-#ifdef OPENMVG_USE_OPENMP
-  #pragma omp critical
-#endif
         continue;
       }
 
