@@ -204,10 +204,10 @@ bool exportToMVE2Format(
       }
 
       // Save a thumbnail image "thumbnail.png", 50x50 pixels
-      thumbnail = create_thumbnail(image, 50, 50);
-      const std::string dstThumbnailImage =
-        stlplus::create_filespec(stlplus::folder_append_separator(sOutViewIteratorDirectory), "thumbnail","png");
-      WriteImage(dstThumbnailImage.c_str(), thumbnail);
+      //thumbnail = create_thumbnail(image, 50, 50);
+      //const std::string dstThumbnailImage =
+      //  stlplus::create_filespec(stlplus::folder_append_separator(sOutViewIteratorDirectory), "thumbnail","png");
+      //WriteImage(dstThumbnailImage.c_str(), thumbnail);
     }
 
     // For each feature, write to bundle:  position XYZ[0-3], color RGB[0-2], all ref.view_id & ref.feature_id
