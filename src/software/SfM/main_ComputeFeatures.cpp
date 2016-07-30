@@ -289,7 +289,15 @@ int main(int argc, char **argv)
           auto start = std::chrono::system_clock::now();
           image_describer->Describe(imageGray, regions, mask);
           auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
-          std::cerr << regions->RegionCount() << " features - " << elapsed.count() << "ms\n";
+          std::cerr
+            << i
+            << "/"
+            << sfm_data.views.size()
+            << " | "
+            << regions->RegionCount()
+            << " features | "
+            << elapsed.count()
+          << "ms\n";
           image_describer->Save(regions.get(), sFeat, sDesc);
         }
       }
