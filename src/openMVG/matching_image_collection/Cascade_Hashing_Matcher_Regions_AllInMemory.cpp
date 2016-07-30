@@ -39,7 +39,6 @@ void Match
   PairWiseMatches & map_PutativesMatches // the pairwise photometric corresponding points
 )
 {
-  C_Progress_display my_progress_bar( pairs.size() );
 
   // Collect used view indexes
   std::set<IndexT> used_index;
@@ -129,7 +128,6 @@ void Match
     const features::Regions &regionsI = *regions_provider.regions_per_view.at(I).get();
     if (regionsI.RegionCount() == 0)
     {
-      my_progress_bar += indexToCompare.size();
       continue;
     }
 
@@ -150,10 +148,6 @@ void Match
       if (regions_provider.regions_per_view.count(J) == 0
           || regionsI.Type_id() != regionsJ.Type_id())
       {
-#ifdef OPENMVG_USE_OPENMP
-        #pragma omp critical
-#endif
-        ++my_progress_bar;
         continue;
       }
 
@@ -206,7 +200,7 @@ void Match
 #pragma omp critical
 #endif
       {
-        ++my_progress_bar;
+        std::cout << "[" << I << ", " << J << "]" << " " << vec_putative_matches.size() << " matches\n";
         if (!vec_putative_matches.empty())
         {
           map_PutativesMatches.insert( make_pair( make_pair(I,J), std::move(vec_putative_matches) ));
@@ -264,3 +258,4 @@ void Cascade_Hashing_Matcher_Regions_AllInMemory::Match
 
 } // namespace openMVG
 } // namespace matching_image_collection
+
