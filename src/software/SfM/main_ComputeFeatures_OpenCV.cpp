@@ -154,6 +154,7 @@ public:
 #include <cereal/types/polymorphic.hpp>
 #include <cereal/archives/json.hpp>
 CEREAL_REGISTER_TYPE_WITH_NAME(AKAZE_OCV_Image_describer, "AKAZE_OCV_Image_describer");
+CEREAL_REGISTER_POLYMORPHIC_RELATION(openMVG::features::Image_describer, AKAZE_OCV_Image_describer)
 
 #ifdef USE_OCVSIFT
 ///
@@ -248,6 +249,7 @@ private:
   int _i;
 };
 CEREAL_REGISTER_TYPE_WITH_NAME(SIFT_OPENCV_Image_describer, "SIFT_OPENCV_Image_describer");
+CEREAL_REGISTER_POLYMORPHIC_RELATION(openMVG::features::Image_describer, SIFT_OPENCV_Image_describer)
 #endif //USE_OCVSIFT
 
 /// Compute between the Views
