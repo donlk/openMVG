@@ -121,6 +121,12 @@ IF(CXX11_COMPILER)
   ENDIF(HAVE_CXX11_CHRONO)
 ENDIF(CXX11_COMPILER)
 
+FUNCTION(UPDATE_CACHE_VARIABLE VAR_NAME VALUE)
+  GET_PROPERTY(HELP_STRING CACHE ${VAR_NAME} PROPERTY HELPSTRING)
+  GET_PROPERTY(VAR_TYPE CACHE ${VAR_NAME} PROPERTY TYPE)
+  SET(${VAR_NAME} ${VALUE} CACHE ${VAR_TYPE} "${HELP_STRING}" FORCE)
+ENDFUNCTION()
+
 # ==============================================================================
 # OpenMP detection
 # ==============================================================================
@@ -276,6 +282,20 @@ IF(NOT FLANN_FOUND OR OpenMVG_USE_INTERNAL_FLANN)
   SET(FLANN_INCLUDE_DIRS ${CMAKE_CURRENT_SOURCE_DIR}/third_party/flann/src/cpp)
   SET(FLANN_LIBRARY flann_cpp_s)
 ENDIF()
+
+# ==============================================================================
+# Torch
+# ==============================================================================
+# - internal by default (Torch),
+# ==============================================================================
+FIND_PACKAGE(Torch)
+IF(DEFINED Torch_INSTALL_INCLUDE)
+  SET(THC_INSTALL_INCLUDE ${Torch_INSTALL_INCLUDE})
+  SET(TH_INSTALL_INCLUDE ${Torch_INSTALL_INCLUDE})
+  SET(TH_INSTALL_LIB ${Torch_INSTALL_LIB})
+  SET(THC_INSTALL_LIB ${Torch_INSTALL_LIB})
+ENDIF()
+
 
 # ==============================================================================
 # CoinUtils
@@ -621,4 +641,3 @@ CONFIGURE_FILE("${CMAKE_SOURCE_DIR}/cmakeFindModules/OpenMVGConfig.cmake.in"
 
 INSTALL(FILES "${CMAKE_CURRENT_BINARY_DIR}/OpenMVGConfig.cmake"
         DESTINATION share/openMVG/cmake)
-

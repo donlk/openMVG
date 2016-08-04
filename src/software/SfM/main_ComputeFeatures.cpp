@@ -92,6 +92,9 @@ int main(int argc, char **argv)
       << "   SIFT (default),\n"
       << "   AKAZE_FLOAT: AKAZE with floating point descriptors,\n"
       << "   AKAZE_MLDB:  AKAZE with binary descriptors\n"
+      << "   LATCH_UNSIGNED: Latch descriptor (unsigned int representation)\n"
+      << "   LATCH_BINARY: Latch descriptor (unsigned char representation)\n"
+      << "   PNNET: PN-NET descriptor\n"
       << "[-u|--upright] Use Upright feature 0 or 1\n"
       << "[-p|--describerPreset]\n"
       << "  (used to control the Image_describer configuration):\n"
@@ -143,14 +146,19 @@ int main(int argc, char **argv)
   if (!Load(sfm_data, sSfM_Data_Filename, ESfM_Data(VIEWS|INTRINSICS))) {
     std::cerr << std::endl
       << "The input file \""<< sSfM_Data_Filename << "\" cannot be read" << std::endl;
-    return false;
+    return EXIT_FAILURE;
   }
+  C_Progress_display my_progress_bar( sfm_data.GetViews().size(),
+    std::cout, "\n- EXTRACT FEATURES -\n" );
+
 
   // b. Init the image_describer
   // - retrieve the used one in case of pre-computed features
   // - else create the desired one
 
   using namespace openMVG::features;
+  system::Timer timer;
+    
   std::unique_ptr<Image_describer> image_describer;
 
   const std::string sImage_describer = stlplus::create_filespec(sOutDir, "image_describer", "json");
@@ -159,7 +167,7 @@ int main(int argc, char **argv)
     // Dynamically load the image_describer from the file (will restore old used settings)
     std::ifstream stream(sImage_describer.c_str());
     if (!stream.is_open())
-      return false;
+      return 1;
 
     try
     {
@@ -170,7 +178,7 @@ int main(int argc, char **argv)
     {
       std::cerr << e.what() << std::endl
         << "Cannot dynamically allocate the Image_describer interface." << std::endl;
-      return EXIT_FAILURE;
+	  return 1;
     }
   }
   else
@@ -194,11 +202,42 @@ int main(int argc, char **argv)
       image_describer.reset(new AKAZE_Image_describer
         (AKAZE_Image_describer::Params(AKAZE::Params(), AKAZE_MLDB), !bUpRight));
     }
+    else
+    if (sImage_Describer_Method == "LATCH_UNSIGNED")
+    {
+      image_describer.reset(new LATCH_Image_describer(LATCHParams(LATCH_UNSIGNED)));
+    }
+    else
+    if (sImage_Describer_Method == "LATCH_BINARY")
+    {
+      image_describer.reset(new LATCH_Image_describer(LATCHParams(LATCH_BINARY)));
+    }
+    else
+    if (sImage_Describer_Method == "DEEP_SIAM_2_STREAM_DESC_NOTRE_DAME")
+    {
+      image_describer.reset(new DEEP_Image_describer(DEEPParams(SIAM_2_STREAM_DESC_NOTRE_DAME)));
+    }
+    else
+    if (sImage_Describer_Method == "DEEP_SIAM_2_STREAM_DESC_YOSEMITE")
+    {
+      image_describer.reset(new DEEP_Image_describer(DEEPParams(SIAM_2_STREAM_DESC_YOSEMITE)));
+    }
+    else
+    if (sImage_Describer_Method == "DEEP_SIAM_DESC_YOSEMITE")
+    {
+      image_describer.reset(new DEEP_Image_describer(DEEPParams(SIAM_DESC_YOSEMITE)));
+    }
+    else
+    if (sImage_Describer_Method == "PNNET")
+    {
+      image_describer.reset(new DEEP_Image_describer(DEEPParams(PNNET)));
+    }
+    //image_describer.reset(new AKAZE_Image_describer(AKAZEParams(AKAZEConfig(), AKAZE_LIOP), !bUpRight));
     if (!image_describer)
     {
       std::cerr << "Cannot create the designed Image_describer:"
         << sImage_Describer_Method << "." << std::endl;
-      return EXIT_FAILURE;
+      return 1;;
     }
     else
     {
@@ -206,7 +245,7 @@ int main(int argc, char **argv)
       if (!image_describer->Set_configuration_preset(stringToEnum(sFeaturePreset)))
       {
         std::cerr << "Preset configuration failed." << std::endl;
-        return EXIT_FAILURE;
+        return 1;
       }
     }
 
@@ -215,7 +254,7 @@ int main(int argc, char **argv)
     {
       std::ofstream stream(sImage_describer.c_str());
       if (!stream.is_open())
-        return false;
+        return 1;
 
       cereal::JSONOutputArchive archive(stream);
       archive(cereal::make_nvp("image_describer", image_describer));
@@ -224,19 +263,34 @@ int main(int argc, char **argv)
       archive(cereal::make_nvp("regions_type", regionsType));
     }
   }
+#ifdef OPENMVG_USE_OPENMP
+  const unsigned int nb_max_thread = 1;//omp_get_max_threads();
+#endif
+
+#ifdef OPENMVG_USE_OPENMP
+  omp_set_num_threads(iNumThreads);
+  if (iNumThreads == 0) omp_set_num_threads(1);
+  #pragma omp parallel for schedule(static)
+#endif
+  for(int i = 0; i < sfm_data.views.size(); ++i)
+  {
+#ifdef OPENMVG_USE_OPENMP
+    if(iNumThreads == 0) omp_set_num_threads(nb_max_thread);
+#endif
+
 
   // Feature extraction routines
   // For each View of the SfM_Data container:
   // - if regions file exists continue,
   // - if no file, compute features
   {
-    system::Timer timer;
     Image<unsigned char> imageGray, globalMask, imageMask;
 
     const std::string sGlobalMask_filename = stlplus::create_filespec(sOutDir, "mask.png");
     if(stlplus::file_exists(sGlobalMask_filename))
       ReadImage(sGlobalMask_filename.c_str(), &globalMask);
 
+<<<<<<< HEAD
       std::cout << "\n- EXTRACT FEATURES -\n";
     #ifdef OPENMVG_USE_OPENMP
     const unsigned int nb_max_thread = omp_get_max_threads();
@@ -251,6 +305,8 @@ int main(int argc, char **argv)
 #ifdef OPENMVG_USE_OPENMP
       if(iNumThreads == 0) omp_set_num_threads(nb_max_thread);
 #endif
+=======
+>>>>>>> d6c573a027b404ae110db173b1604a4e346705ab
       Views::const_iterator iterViews = sfm_data.views.begin();
       std::advance(iterViews, i);
       const View * view = iterViews->second.get();
@@ -286,6 +342,7 @@ int main(int argc, char **argv)
         {
           // Compute features and descriptors and export them to files
           std::unique_ptr<Regions> regions;
+<<<<<<< HEAD
           auto start = std::chrono::system_clock::now();
           image_describer->Describe(imageGray, regions, mask);
           auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
@@ -300,6 +357,15 @@ int main(int argc, char **argv)
           << "ms\n";
           image_describer->Save(regions.get(), sFeat, sDesc);
         }
+=======
+		  image_describer->Describe(imageGray, regions, mask);
+          image_describer->Save(regions.get(), sFeat, sDesc);
+        }
+#ifdef OPENMVG_USE_OPENMP
+		#pragma omp critical
+#endif
+		++my_progress_bar;
+>>>>>>> d6c573a027b404ae110db173b1604a4e346705ab
       }
     }
     std::cout << "Task done in (s): " << timer.elapsed() << std::endl;

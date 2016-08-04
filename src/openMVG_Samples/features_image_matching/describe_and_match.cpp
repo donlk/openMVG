@@ -42,6 +42,7 @@ int main(int argc, char **argv) {
       << "  (choose an image_describer interface):\n"
       << "   SIFT: SIFT keypoint & descriptor,\n"
       << "   AKAZE: AKAZE keypoint & floating point descriptor]"
+      << "   LATCH: LATCH keypoint and floating point descriptor"
       << std::endl;
 
       std::cerr << s << std::endl;

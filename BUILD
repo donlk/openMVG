@@ -10,6 +10,8 @@ Required tools:
 * Cmake 
 * Git
 * c/c++ compiler (gcc or visual studio or clang)
+* CUDA
+* NVIDIA Graphics Card with compute capability >= 3.0 (Kepler architecture)
 
 Getting the sources:
 $ git clone --recursive https://github.com/openMVG/openMVG.git
@@ -23,6 +25,10 @@ As openMVG use some C++11 features you must have a c++11 ready compiler:
 - Visual studio >= 2015 (recommended)
 - GCC >= 4.8.1
 - Clang >= 3.3
+
+As openMVG uses some CUDA capabilities, you want CUDA above or equal to 7.0 installed.
+This ensures that the compiler option of --default-stream=per-thread is available to allow for
+further parallelism.
 
 --------------------------
 General informations

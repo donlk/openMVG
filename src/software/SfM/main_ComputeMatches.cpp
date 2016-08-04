@@ -12,6 +12,7 @@
 #include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
 
 /// Generic Image Collection image matching
+#include "openMVG/matching_image_collection/GPU_Matcher_Regions_AllInMemory.hpp"
 #include "openMVG/matching_image_collection/Matcher_Regions_AllInMemory.hpp"
 #include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions_AllInMemory.hpp"
 #include "openMVG/matching_image_collection/GeometricFilter.hpp"
@@ -111,6 +112,7 @@ int main(int argc, char **argv)
       << "  AUTO: auto choice from regions type,\n"
       << "  For Scalar based regions descriptor:\n"
       << "    BRUTEFORCEL2: L2 BruteForce matching,\n"
+      << "    GPUBRUTEFORCEL2: L2 BruteForce matching (GPU, 128 bit float expected),\n"
       << "    ANNL2: L2 Approximate Nearest Neighbor matching,\n"
       << "    CASCADEHASHINGL2: L2 Cascade Hashing matching.\n"
       << "    FASTCASCADEHASHINGL2: (default)\n"
@@ -312,6 +314,18 @@ int main(int argc, char **argv)
     {
       std::cout << "Using FAST_CASCADE_HASHING_L2 matcher" << std::endl;
       collectionMatcher.reset(new Cascade_Hashing_Matcher_Regions_AllInMemory(fDistRatio));
+    }
+    else
+    if (sNearestMatchingMethod == "GPU_LATCH")
+    {
+      std::cout << "Using GPU_LATCH matcher" << std::endl;
+      collectionMatcher.reset(new GPU_Matcher_Regions_AllInMemory(fDistRatio, BRUTE_FORCE_HAMMING));
+    }
+    else
+    if (sNearestMatchingMethod == "GPUBRUTEFORCEL2")
+    {
+      std::cout << "Using GPU_LATCH matcher" << std::endl;
+      collectionMatcher.reset(new GPU_Matcher_Regions_AllInMemory(fDistRatio, BRUTE_FORCE_L2));
     }
     if (!collectionMatcher)
     {

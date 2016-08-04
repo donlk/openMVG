@@ -10,9 +10,9 @@
 
 // uncomment to enable custom OpenCV data types
 // (should be uncommented if OpenCV is not available)
-#if !defined(_USE_OPENCV) && !defined(_USE_CUSTOM_CV)
+//#if !defined(_USE_OPENCV) && !defined(_USE_CUSTOM_CV)
 #define _USE_CUSTOM_CV
-#endif
+//#endif
 
 #ifndef NO_ID
 #define NO_ID std::numeric_limits<uint32_t>::max()
@@ -22,6 +22,8 @@
 // S T R U C T S ///////////////////////////////////////////////////
 
 #ifdef _USE_CUSTOM_CV
+
+namespace openMVG {
 
 namespace cv {
 
@@ -69,6 +71,8 @@ public:
 };
 
 } // namespace cv
+
+} // namespace openMVG
 #endif
 /*----------------------------------------------------------------*/
 
