@@ -80,8 +80,18 @@ bool exportToOpenMVS(
   {
     map_view[view.first] = scene.images.size();
     MVS::Interface::Image image;
-    const std::string srcImage = stlplus::create_filespec(sfm_data.s_root_path, view.second->s_Img_path);
-    image.name = stlplus::create_filespec(sOutDir, view.second->s_Img_path);
+
+    // Remove any '/' characters from the image file name to prevent double slashes
+    // when using stlplus::create_filespec(...) for path merging.
+    std::string img_name;
+    std::remove_copy(
+      view.second->s_Img_path.begin(),
+      view.second->s_Img_path.end(),
+      std::back_inserter(img_name),
+      '/'
+    );
+    const std::string srcImage = stlplus::create_filespec(sfm_data.s_root_path, img_name);
+    image.name = stlplus::create_filespec(sOutDir, img_name);
     image.platformID = map_intrinsic.at(view.second->id_intrinsic);
     MVS::Interface::Platform& platform = scene.platforms[image.platformID];
     image.cameraID = 0;
