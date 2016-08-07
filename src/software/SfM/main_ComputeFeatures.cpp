@@ -263,7 +263,7 @@ int main(int argc, char **argv)
       archive(cereal::make_nvp("regions_type", regionsType));
     }
   }
-#ifdef OPENMVG_USE_OPENMP
+/*#ifdef OPENMVG_USE_OPENMP
   const unsigned int nb_max_thread = 1;//omp_get_max_threads();
 #endif
 
@@ -276,7 +276,7 @@ int main(int argc, char **argv)
   {
 #ifdef OPENMVG_USE_OPENMP
     if(iNumThreads == 0) omp_set_num_threads(nb_max_thread);
-#endif
+#endif*/
 
 
   // Feature extraction routines
@@ -290,10 +290,9 @@ int main(int argc, char **argv)
     if(stlplus::file_exists(sGlobalMask_filename))
       ReadImage(sGlobalMask_filename.c_str(), &globalMask);
 
-<<<<<<< HEAD
       std::cout << "\n- EXTRACT FEATURES -\n";
     #ifdef OPENMVG_USE_OPENMP
-    const unsigned int nb_max_thread = omp_get_max_threads();
+    const unsigned int nb_max_thread = 1;//omp_get_max_threads();
     #endif
 
 #ifdef OPENMVG_USE_OPENMP
@@ -305,8 +304,6 @@ int main(int argc, char **argv)
 #ifdef OPENMVG_USE_OPENMP
       if(iNumThreads == 0) omp_set_num_threads(nb_max_thread);
 #endif
-=======
->>>>>>> d6c573a027b404ae110db173b1604a4e346705ab
       Views::const_iterator iterViews = sfm_data.views.begin();
       std::advance(iterViews, i);
       const View * view = iterViews->second.get();
@@ -342,7 +339,6 @@ int main(int argc, char **argv)
         {
           // Compute features and descriptors and export them to files
           std::unique_ptr<Regions> regions;
-<<<<<<< HEAD
           auto start = std::chrono::system_clock::now();
           image_describer->Describe(imageGray, regions, mask);
           auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - start);
@@ -357,15 +353,6 @@ int main(int argc, char **argv)
           << "ms\n";
           image_describer->Save(regions.get(), sFeat, sDesc);
         }
-=======
-		  image_describer->Describe(imageGray, regions, mask);
-          image_describer->Save(regions.get(), sFeat, sDesc);
-        }
-#ifdef OPENMVG_USE_OPENMP
-		#pragma omp critical
-#endif
-		++my_progress_bar;
->>>>>>> d6c573a027b404ae110db173b1604a4e346705ab
       }
     }
     std::cout << "Task done in (s): " << timer.elapsed() << std::endl;

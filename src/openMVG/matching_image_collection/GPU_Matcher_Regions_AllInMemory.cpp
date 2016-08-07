@@ -10,7 +10,6 @@
 #include "openMVG/matching_image_collection/Matcher.hpp"
 
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
-#include "third_party/progress/progress.hpp"
 
 #include "gpu/LatchBitMatcher.hpp"
 #include "gpu/BruteForceL2Matcher.hpp"
@@ -36,7 +35,6 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 #ifdef OPENMVG_USE_OPENMP
   std::cout << "Using the OPENMP thread interface" << std::endl;
 #endif
-  C_Progress_display my_progress_bar( pairs.size() );
 
   // Sort pairs according the first index to minimize the MatcherT build operations
   typedef std::map<size_t, std::vector<size_t> > Map_vectorT;
@@ -56,7 +54,6 @@ void GPU_Matcher_Regions_AllInMemory::Match(
     const features::Regions & regionsI = *regions_provider->regions_per_view.at(I).get();
     if (regionsI.RegionCount() == 0)
     {
-      my_progress_bar += indexToCompare.size();
       continue;
     }
 
@@ -73,13 +70,8 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 					const size_t J = indexToCompare[j];
 
 					const features::Regions &regionsJ = *regions_provider->regions_per_view.at(J).get();
-					if (regionsJ.RegionCount() == 0
-							|| regionsI.Type_id() != regionsJ.Type_id())
+					if (regionsJ.RegionCount() == 0 || regionsI.Type_id() != regionsJ.Type_id())
 					{
-#ifdef OPENMVG_USE_OPENMP
-			#pragma omp critical
-#endif
-						++my_progress_bar;
 						continue;
 					}
 					// LatchClassifier for the GPU
@@ -106,7 +98,7 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 					#pragma omp critical
 #endif
 					{
-						++my_progress_bar;
+						std::cout << "[" << I << ", " << J << "]" << " " << vec_putatives_matches.size() << " matches\n";
 						if (!vec_putatives_matches.empty())
 						{
 							map_PutativesMatches.insert( make_pair( make_pair(I,J), std::move(vec_putatives_matches) ));
@@ -127,13 +119,8 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 					const size_t J = indexToCompare[j];
 
 					const features::Regions &regionsJ = *regions_provider->regions_per_view.at(J).get();
-					if (regionsJ.RegionCount() == 0
-							|| regionsI.Type_id() != regionsJ.Type_id())
+					if (regionsJ.RegionCount() == 0 || regionsI.Type_id() != regionsJ.Type_id())
 					{
-#ifdef OPENMVG_USE_OPENMP
-			#pragma omp critical
-#endif
-						++my_progress_bar;
 						continue;
 					}
 					// LatchClassifier for the GPU
@@ -206,7 +193,7 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 					#pragma omp critical
 #endif
 					{
-						++my_progress_bar;
+						std::cout << "[" << I << ", " << J << "]" << " " << vec_putatives_matches.size() << " matches\n";
 						if (!vec_putatives_matches.empty())
 						{
 							map_PutativesMatches.insert( make_pair( make_pair(I,J), std::move(vec_putatives_matches) ));
