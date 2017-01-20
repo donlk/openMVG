@@ -1,5 +1,5 @@
-﻿#ifndef KVLD_ALGORITHM_H
-#define KVLD_ALGORITHM_H
+﻿#ifndef OPENMVG_MATCHING_KVLD_ALGORITHM_H
+#define OPENMVG_MATCHING_KVLD_ALGORITHM_H
 
 /** @basic structures implementation
  ** @author Zhe Liu
@@ -13,23 +13,23 @@ This file is part of the KVLD library and is made available under
 the terms of the BSD license (see the COPYING file).
 */
 
-#include <openMVG/numeric/numeric.h>
-#include <openMVG/image/image_container.hpp>
-#include <openMVG/matching/indMatch.hpp>
-#include <openMVG/features/feature.hpp>
-#include <openMVG/types.hpp>
+#include "openMVG/features/feature.hpp"
+#include "openMVG/image/image_container.hpp"
+#include "openMVG/matching/indMatch.hpp"
+#include "openMVG/numeric/numeric.h"
+#include "openMVG/types.hpp"
 
-#include <fstream>
-#include <iostream>
-#include <vector>
-#include <sstream>
-#include <numeric>
-#include <memory>
 #include <algorithm>
+#include <fstream>
 #include <functional>
+#include <iostream>
+#include <memory>
+#include <numeric>
+#include <sstream>
+#include <vector>
 
 
-const float PI_ = 4.0 * atan( 1.0f );
+const float PI_ = 4.0f * atan( 1.0f );
 
 //============================== simplified structure of a point=============================//
 //if you set KVLD geometry verification to false, you only need to fill x and y in a point structure
@@ -42,7 +42,7 @@ struct PointS
 	PointS( float x = (0.f), float y = (0.f)):
       x( x ), y( y ), scale(0.f), angle(0.f){}
 	PointS( const float& x, const float& y,const float& angle,const float& scale):
-      x( x ), y( y ), angle( angle ), scale( scale ){}
+      x( x ), y( y ), scale( scale ), angle( angle ){}
 };
 
 //===================================== integral image ====================================//
@@ -198,4 +198,4 @@ inline float consistent( const T& a1, const T& a2, const T& b1, const T& b2 )
 }
 float getRange(const openMVG::image::Image< float >& I, int a, const float p);
 
-#endif //KVLD_ALGORITHM_H
+#endif // OPENMVG_MATCHING_KVLD_ALGORITHM_H

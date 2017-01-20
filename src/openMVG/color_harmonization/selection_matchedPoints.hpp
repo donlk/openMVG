@@ -5,12 +5,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OPENMVG_COLORHARMONIZATION_MATCHESPOINTS_H
-#define OPENMVG_COLORHARMONIZATION_MATCHESPOINTS_H
+#ifndef OPENMVG_COLOR_HARMONIZATION_SELECTION_MATCHED_POINTS_HPP
+#define OPENMVG_COLOR_HARMONIZATION_SELECTION_MATCHED_POINTS_HPP
 
 #include "openMVG/color_harmonization/selection_interface.hpp"
-#include "openMVG/matching/indMatch.hpp"
 #include "openMVG/features/features.hpp"
+#include "openMVG/matching/indMatch.hpp"
 
 #include <vector>
 
@@ -27,11 +27,12 @@ public:
                                  const std::vector< features::SIOPointFeature >& vec_featsR,
                                  const size_t radius = 1 ):
      commonDataByPair( sLeftImage, sRightImage ),
+     _radius( radius ),
      _vec_PutativeMatches( vec_PutativeMatches ),
-     _vec_featsL( vec_featsL ), _vec_featsR( vec_featsR ), _radius( radius )
+     _vec_featsL( vec_featsL ), _vec_featsR( vec_featsR )
   {}
 
-  ~commonDataByPair_MatchedPoints() override = default ; 
+  ~commonDataByPair_MatchedPoints() override = default ;
 
   /**
    * Fill mask from corresponding points (each point pictured by a disk of radius _radius)
@@ -41,7 +42,7 @@ public:
    *
    * \return True if some pixel have been set to true.
    */
-  bool computeMask( image::Image< unsigned char > & maskLeft, image::Image< unsigned char > & maskRight ) override 
+  bool computeMask( image::Image< unsigned char > & maskLeft, image::Image< unsigned char > & maskRight ) override
   {
     maskLeft.fill(0);
     maskRight.fill(0);
@@ -69,4 +70,4 @@ private:
 }  // namespace color_harmonization
 }  // namespace openMVG
 
-#endif  // OPENMVG_COLORHARMONIZATION_MATCHESPOINTS_H
+#endif  // OPENMVG_COLOR_HARMONIZATION_SELECTION_MATCHED_POINTS_HPP

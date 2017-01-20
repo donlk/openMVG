@@ -27,11 +27,11 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/multiview/essential.hpp"
-#include "openMVG/multiview/solver_essential_kernel.hpp"
 #include "openMVG/multiview/projection.hpp"
-#include "testing/testing.h"
-
+#include "openMVG/multiview/solver_essential_kernel.hpp"
 #include "openMVG/multiview/test_data_sets.hpp"
+
+#include "testing/testing.h"
 
 using namespace openMVG;
 
@@ -62,7 +62,7 @@ TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel_IdFocal) {
     // Recover rotation and translation from E.
     Rs.resize(Es.size());
     ts.resize(Es.size());
-    for (int s = 0; s < Es.size(); ++s) {
+    for (size_t s = 0; s < Es.size(); ++s) {
       Vec2 x1Col, x2Col;
       x1Col << d._x[i].col(0);
       x2Col << d._x[(i+1)%iNviews].col(0);
@@ -75,7 +75,7 @@ TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel_IdFocal) {
     }
     //-- Compute Ground Truth motion
     Mat3 R;
-    Vec3 t, t0 = Vec3::Zero(), t1 = Vec3::Zero();
+    Vec3 t;
     RelativeCameraMotion(d._R[i], d._t[i], d._R[(i+1)%iNviews], d._t[(i+1)%iNviews], &R, &t);
 
     // Assert that found relative motion is correct for almost one model.
@@ -98,7 +98,7 @@ TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel_IdFocal) {
 
 TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel) {
 
-  typedef essential::kernel::EightPointKernel Kernel;
+  using Kernel = essential::kernel::EightPointKernel;
 
   int focal = 1000;
   int principal_Point = 500;
@@ -128,7 +128,7 @@ TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel) {
     // Recover rotation and translation from E.
     Rs.resize(Es.size());
     ts.resize(Es.size());
-    for (int s = 0; s < Es.size(); ++s) {
+    for (size_t s = 0; s < Es.size(); ++s) {
       Vec2 x1Col, x2Col;
       x1Col << d._x[i].col(0);
       x2Col << d._x[(i+1)%iNviews].col(0);
@@ -141,7 +141,7 @@ TEST(EightPointsRelativePose, EightPointsRelativePose_Kernel) {
     }
     //-- Compute Ground Truth motion
     Mat3 R;
-    Vec3 t, t0 = Vec3::Zero(), t1 = Vec3::Zero();
+    Vec3 t;
     RelativeCameraMotion(d._R[i], d._t[i], d._R[(i+1)%iNviews], d._t[(i+1)%iNviews], &R, &t);
 
     // Assert that found relative motion is correct for almost one model.
@@ -169,27 +169,27 @@ TEST(FivePointKernelTest, KernelError) {
         0, -.5, .8,  0, .8;
   x2 << 0,    0,  0, .8, .8,
         .1, -.4, .9,  .1, .9; // Y Translated camera.
-  typedef essential::kernel::FivePointKernel Kernel;
+  using Kernel = essential::kernel::FivePointKernel;
   Kernel kernel(x1,x2, Mat3::Identity(), Mat3::Identity());
 
   bool bOk = true;
   vector<size_t> samples;
-  for (size_t i = 0; i < x1.cols(); ++i) {
+  for (Mat::Index i = 0; i < x1.cols(); ++i) {
     samples.push_back(i);
   }
   vector<Mat3> Es;
   kernel.Fit(samples, &Es);
 
   bOk &= (!Es.empty());
-  for (int i = 0; i < Es.size(); ++i) {
-    for(int j = 0; j < x1.cols(); ++j)
+  for (size_t i = 0; i < Es.size(); ++i) {
+    for(Mat::Index j = 0; j < x1.cols(); ++j)
       EXPECT_NEAR(0.0, kernel.Error(j,Es[i]), 1e-8);
   }
 }
 
 TEST(FivePointKernelTest, FivePointsRelativePose_Kernel) {
 
-  typedef essential::kernel::FivePointKernel Kernel;
+  using Kernel = essential::kernel::FivePointKernel;
 
   int focal = 1000;
   int principal_Point = 500;
@@ -220,7 +220,7 @@ TEST(FivePointKernelTest, FivePointsRelativePose_Kernel) {
     // Recover rotation and translation from E.
     Rs.resize(Es.size());
     ts.resize(Es.size());
-    for (int s = 0; s < Es.size(); ++s) {
+    for (size_t s = 0; s < Es.size(); ++s) {
       Vec2 x1Col, x2Col;
       x1Col << d._x[0].col(0);
       x2Col << d._x[i].col(0);
@@ -233,7 +233,7 @@ TEST(FivePointKernelTest, FivePointsRelativePose_Kernel) {
     }
     //-- Compute Ground Truth motion
     Mat3 R;
-    Vec3 t, t0 = Vec3::Zero(), t1 = Vec3::Zero();
+    Vec3 t;
     RelativeCameraMotion(d._R[0], d._t[0], d._R[i], d._t[i], &R, &t);
 
     // Assert that found relative motion is correct for almost one model.

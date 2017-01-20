@@ -6,8 +6,11 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/robust_estimation/robust_estimator_lineKernel_test.hpp"
+
 #include "testing/testing.h"
+
 #include <vector>
+
 using namespace openMVG;
 using namespace openMVG::robust;
 
@@ -21,7 +24,7 @@ TEST(LineFitter, ItWorks) {
   std::vector<Vec2> models;
   LineKernel kernel(xy);
   std::vector<size_t> samples;
-  for (size_t i = 0; i < xy.cols(); ++i) {
+  for (Mat2X::Index i = 0; i < xy.cols(); ++i) {
     samples.push_back(i);
   }
   kernel.Fit(samples, &models);

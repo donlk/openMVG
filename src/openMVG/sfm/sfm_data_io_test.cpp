@@ -6,6 +6,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/sfm/sfm.hpp"
+
 #include "testing/testing.h"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 
@@ -60,7 +61,7 @@ TEST(SfM_Data_IO, SAVE_LOAD_JSON) {
 
   const std::vector<std::string> ext_Type = {"json", "bin", "xml"};
 
-  for (int i=0; i < ext_Type.size(); ++i)
+  for (size_t i=0; i < ext_Type.size(); ++i)
   {
     std::ostringstream os;
     os << "SAVE_LOAD" << "." << ext_Type[i];

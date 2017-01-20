@@ -1,5 +1,5 @@
-#ifndef KVLD_H
-#define KVLD_H
+#ifndef OPENMVG_MATCHING_KVLD_H
+#define OPENMVG_MATCHING_KVLD_H
 /** @Main KVLD algorithm implementation
  ** @Containing scale image pyramid, VLD structure and KVLD algorithm
  ** @author Zhe Liu
@@ -91,14 +91,16 @@ public:
 	template< typename T >
 	VLD( const ImageScale& series, T const& P1, T const& P2 );
 //=========================================class functions==============================================//
-	inline double get_orientation()const
-	{
-		float dy = end_point[ 1 ] - begin_point[ 1 ];
-		float	dx = end_point[ 0 ] - begin_point[ 0 ];
+  inline double get_orientation()const
+  {
+		const float dy = end_point[ 1 ] - begin_point[ 1 ];
+		const float	dx = end_point[ 0 ] - begin_point[ 0 ];
 		float angle;
-		anglefrom( dx, dy, angle );
-		return angle;
-	}
+		if (anglefrom( dx, dy, angle ))
+			return angle;
+		else
+			return 0.0;
+  }
 	inline double difference( const  VLD& vld2 )const
 	{
 		double diff[ 2 ];
@@ -183,4 +185,4 @@ float KVLD(const openMVG::image::Image< float >& I1,
   std::vector< bool >& valide,
   KvldParameters& kvldParameters );
 
-#endif //KVLD_H
+#endif // OPENMVG_MATCHING_KVLD_H

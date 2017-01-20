@@ -8,20 +8,21 @@
 #include "openMVG/sfm/sfm.hpp"
 #include "openMVG/sfm/sfm_data_filters.hpp"
 
+#include "testing/testing.h"
+
 using namespace openMVG;
 using namespace openMVG::cameras;
 using namespace openMVG::geometry;
 using namespace openMVG::sfm;
 
-#include "testing/testing.h"
 
 void init_scene
 (
   SfM_Data &sfm_data,
-  const int viewsCount
+  const IndexT viewsCount
 )
 {
-  for(IndexT i = 0; i < viewsCount; ++i)
+  for (IndexT i = 0; i < viewsCount; ++i)
   {
     // Add views
     std::ostringstream os;

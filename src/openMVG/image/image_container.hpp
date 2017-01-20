@@ -4,26 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OPENMVG_IMAGE_IMAGE_HPP
-#define OPENMVG_IMAGE_IMAGE_HPP
+#ifndef OPENMVG_IMAGE_IMAGE_CONTAINER_HPP
+#define OPENMVG_IMAGE_IMAGE_CONTAINER_HPP
 
 #include "openMVG/numeric/numeric.h"
 
-//---------------------------------
-//  Universal Image Processing Algorithm
-//   _  _  __  ___  __
-//  ( )( )(  )(  ,\(  )
-//  ( )( ) )(  ) _//__\
-//  (____)(__)(_) (_)(_)
-//-------
-//-- Container for a 2D image
-//-- This class ensure that the image have a width and a height
-//-- and a 2D array of T data.
-//-
-//-- Data is saved in row major format
-//-- Pixel access is done with operator(y,x)
-//  [2/3/2011 pierre MOULON]
-//---------------------------
 namespace openMVG
 {
 namespace image
@@ -40,10 +25,10 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
   public:
 
     /// Pixel data type
-    typedef T Tpixel;
+    using Tpixel = T;
 
     /// Full internal type
-    typedef Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> Base;
+    using Base = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
 
 
     /**
@@ -276,4 +261,4 @@ Image<T1> operator-( const Image<T1> & imgA , const Image<T1> & imgB )
 } // namespace image
 } // namespace openMVG
 
-#endif // OPENMVG_IMAGE_IMAGE_HPP
+#endif // OPENMVG_IMAGE_IMAGE_CONTAINER_HPP

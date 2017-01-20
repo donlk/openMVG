@@ -42,6 +42,15 @@ TARGET_LINK_LIBRARIES(openMVG_main_ComputeFeatures
   vlsift
   )
 
+ADD_EXECUTABLE(openMVG_main_ListMatchingPairs main_ListMatchingPairs.cpp)
+TARGET_LINK_LIBRARIES(openMVG_main_ListMatchingPairs
+  openMVG_system
+  openMVG_features
+  openMVG_multiview
+  openMVG_sfm
+  stlplus
+  )
+
 ADD_EXECUTABLE(openMVG_main_ComputeMatches main_ComputeMatches.cpp)
 TARGET_LINK_LIBRARIES(openMVG_main_ComputeMatches
   openMVG_system
@@ -55,6 +64,8 @@ TARGET_LINK_LIBRARIES(openMVG_main_ComputeMatches
 # Installation rules
 SET_PROPERTY(TARGET openMVG_main_ComputeFeatures PROPERTY FOLDER OpenMVG/software)
 INSTALL(TARGETS openMVG_main_ComputeFeatures DESTINATION bin/)
+SET_PROPERTY(TARGET openMVG_main_ListMatchingPairs PROPERTY FOLDER OpenMVG/software)
+INSTALL(TARGETS openMVG_main_ListMatchingPairs DESTINATION bin/)
 SET_PROPERTY(TARGET openMVG_main_ComputeMatches PROPERTY FOLDER OpenMVG/software)
 INSTALL(TARGETS openMVG_main_ComputeMatches DESTINATION bin/)
 
@@ -275,6 +286,15 @@ TARGET_LINK_LIBRARIES(openMVG_main_ExportCameraFrustums
   stlplus
   )
 
+# - Export SfM openMVG scene to NVM (N-View Match) file 
+ADD_EXECUTABLE(openMVG_main_openMVG2NVM main_openMVG2NVM.cpp)
+TARGET_LINK_LIBRARIES( openMVG_main_openMVG2NVM
+  openMVG_system
+  openMVG_image
+  openMVG_features
+  openMVG_sfm
+  stlplus )
+
 # installation rules
 SET_PROPERTY(TARGET openMVG_main_openMVG2PMVS PROPERTY FOLDER OpenMVG/software)
 INSTALL(TARGETS openMVG_main_openMVG2PMVS DESTINATION bin/)
@@ -290,6 +310,9 @@ SET_PROPERTY(TARGET openMVG_main_openMVG2MVE2 PROPERTY FOLDER OpenMVG/software)
 INSTALL(TARGETS openMVG_main_openMVG2MVE2 DESTINATION bin/)
 SET_PROPERTY(TARGET openMVG_main_ExportCameraFrustums PROPERTY FOLDER OpenMVG/software)
 INSTALL(TARGETS openMVG_main_ExportCameraFrustums DESTINATION bin/)
+SET_PROPERTY(TARGET openMVG_main_openMVG2NVM PROPERTY FOLDER OpenMVG/software)
+INSTALL(TARGETS openMVG_main_openMVG2NVM DESTINATION bin/)
+
 
 # -
 # Use openCV Feature detector to describe the images

@@ -6,11 +6,13 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/multiview/rotation_averaging_l2.hpp"
-#include <vector>
-#include <map>
 
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
+
+#include <vector>
+#include <map>
+
 
 #ifdef _MSC_VER
 #pragma warning( once : 4267 ) //warning C4267: 'argument' : conversion from 'size_t' to 'const int', possible loss of data
@@ -158,7 +160,7 @@ bool L2RotationAveraging
   {
     // Sort abs(eigenvalues)
     std::vector<std::pair<double, Vec> > eigs(AtA.cols());
-    for (size_t i = 0; i < AtA.cols(); ++i)
+    for (Mat::Index i = 0; i < AtA.cols(); ++i)
     {
       eigs[i] = std::make_pair(es.eigenvalues()[i], es.eigenvectors().col(i));
     }
@@ -251,7 +253,7 @@ bool L2RotationAveraging_Refine
 
   // Convert global rotation to AngleAxis representation
   std::vector<openMVG::Vec3> vec_Rot_AngleAxis(vec_ApprRotMatrix.size());
-  for (int i=0; i < vec_ApprRotMatrix.size(); ++i)
+  for (size_t i=0; i < vec_ApprRotMatrix.size(); ++i)
   {
     ceres::RotationMatrixToAngleAxis((const double*)vec_ApprRotMatrix[i].data(), vec_Rot_AngleAxis[i].data());
   }
@@ -315,7 +317,7 @@ bool L2RotationAveraging_Refine
   if (summary.IsSolutionUsable())
   {
     // Convert back the AngleAxis rotations to rotations matrices
-    for (int i=0; i < vec_ApprRotMatrix.size(); ++i)
+    for (size_t i=0; i < vec_ApprRotMatrix.size(); ++i)
     {
       ceres::AngleAxisToRotationMatrix(
         vec_Rot_AngleAxis[i].data(), vec_ApprRotMatrix[i].data());

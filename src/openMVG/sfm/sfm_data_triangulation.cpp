@@ -4,10 +4,11 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/sfm/sfm_data_triangulation.hpp"
-
 #include "openMVG/multiview/triangulation_nview.hpp"
 #include "openMVG/robust_estimation/rand_sampling.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_triangulation.hpp"
+
 #include "third_party/progress/progress.hpp"
 
 #include <deque>
@@ -218,7 +219,7 @@ const
   const IndexT nbIter = obs.size(); // TODO: automatic computation of the number of iterations?
 
   // - Ransac variables
-  Vec3 best_model;
+  Vec3 best_model = Vec3::Zero();
   std::deque<IndexT> best_inlier_set;
   double best_error = std::numeric_limits<double>::max();
 

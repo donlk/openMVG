@@ -48,8 +48,8 @@ using namespace openMVG::matching;
 using namespace openMVG::lInfinity;
 using namespace openMVG::sfm;
 
-typedef features::SIOPointFeature FeatureT;
-typedef vector< FeatureT > featsT;
+using FeatureT = features::SIOPointFeature;
+using featsT = std::vector< FeatureT >;
 
 ColorHarmonizationEngineGlobal::ColorHarmonizationEngineGlobal(
   const string & sSfM_Data_Filename,
@@ -58,12 +58,12 @@ ColorHarmonizationEngineGlobal::ColorHarmonizationEngineGlobal(
   const string & sOutDirectory,
   const int selectionMethod,
   const int imgRef):
-  _sSfM_Data_Path(sSfM_Data_Filename),
-  _sMatchesPath(sMatchesPath),
-  _sOutDirectory(sOutDirectory),
   _selectionMethod( selectionMethod ),
   _imgRef( imgRef ),
-  _sMatchesFile(sMatchesFile)
+  _sMatchesFile(sMatchesFile),
+  _sSfM_Data_Path(sSfM_Data_Filename),
+  _sMatchesPath(sMatchesPath),
+  _sOutDirectory(sOutDirectory)
 {
   if( !stlplus::folder_exists( sOutDirectory ) )
   {
@@ -142,11 +142,15 @@ bool ColorHarmonizationEngineGlobal::Process()
     do
     {
       cout << "Choose your reference image:\n";
-      for( int i = 0; i < _vec_fileNames.size(); ++i )
+      for( size_t i = 0; i < _vec_fileNames.size(); ++i )
       {
         cout << "id: " << i << "\t" << _vec_fileNames[ i ] << endl;
       }
-    }while( !( cin >> _imgRef ) || _imgRef < 0 || _imgRef >= _vec_fileNames.size() );
+    }
+    while (
+      !( cin >> _imgRef )
+      || _imgRef < 0
+      || _imgRef >= static_cast<int>(_vec_fileNames.size()) );
   }
 
   //Choose selection method
@@ -333,9 +337,9 @@ bool ColorHarmonizationEngineGlobal::Process()
   openMVG::system::Timer timer;
 
   #ifdef OPENMVG_HAVE_MOSEK
-  typedef MOSEK_SolveWrapper SOLVER_LP_T;
+  using SOLVER_LP_T = MOSEK_SolveWrapper;
   #else
-  typedef OSI_CLP_SolverWrapper SOLVER_LP_T;
+  using SOLVER_LP_T = OSI_CLP_SolverWrapper;
   #endif
   // Red channel
   {
@@ -397,7 +401,7 @@ bool ColorHarmonizationEngineGlobal::Process()
     iterSet != set_indeximage.end(); ++iterSet, ++my_progress_bar)
   {
     const size_t imaNum = *iterSet;
-    typedef Eigen::Matrix<double, 256, 1> Vec256;
+    using Vec256 = Eigen::Matrix<double, 256, 1>;
     std::vector< Vec256 > vec_map_lut(3);
 
     const size_t nodeIndex = std::distance(set_indeximage.begin(), iterSet);

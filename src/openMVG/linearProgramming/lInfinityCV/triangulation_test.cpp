@@ -4,21 +4,21 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <iostream>
-#include <vector>
-
-#include "openMVG/multiview/test_data_sets.hpp"
-#include "openMVG/numeric/numeric.h"
-#include "testing/testing.h"
-
-#include "openMVG/multiview/projection.hpp"
-
-#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
-#include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
-#include "openMVG/linearProgramming/linearProgrammingMOSEK.hpp"
 
 #include "openMVG/linearProgramming/bisectionLP.hpp"
+#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
+#include "openMVG/linearProgramming/linearProgrammingMOSEK.hpp"
+#include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
 #include "openMVG/linearProgramming/lInfinityCV/triangulation.hpp"
+
+#include "openMVG/multiview/projection.hpp"
+#include "openMVG/multiview/test_data_sets.hpp"
+#include "openMVG/numeric/numeric.h"
+
+#include "testing/testing.h"
+
+#include <iostream>
+#include <vector>
 
 using namespace openMVG;
 using namespace linearProgramming;
@@ -36,14 +36,14 @@ TEST(lInfinityCV, Triangulation_OSICLPSOLVER) {
   NViewDataSet d2 = d;
   d2._X.fill(0); //Set _Xi of dataset 2 to 0 to be sure of new data computation
 
-  for (int i = 0; i < d._n; ++i)
+  for (size_t i = 0; i < d._n; ++i)
     vec_Pi.push_back(d.P(i));
 
-  for (int k = 0; k < d._x[0].cols(); ++k)
+  for (Mat2X::Index k = 0; k < d._x[0].cols(); ++k)
   {
     Mat2X x_ij;
     x_ij.resize(2,d._n);
-    for (int i = 0; i < d._n; ++i)
+    for (size_t i = 0; i < d._n; ++i)
       x_ij.col(i) = d._x[i].col(k);
 
     std::vector<double> vec_solution(3);
@@ -67,14 +67,14 @@ TEST(lInfinityCV, Triangulation_OSICLPSOLVER) {
     // Compute residuals L2 from estimated parameter values :
     const Vec3 & X = XSolution;
     Vec2 x1, xsum(0.0,0.0);
-    for (int i = 0; i < d2._n; ++i) {
+    for (size_t i = 0; i < d2._n; ++i) {
       x1 = Project(d2.P(i), X);
       xsum += Vec2((x1-x_ij.col(i)).array().pow(2));
     }
-    double dResidual2D = (xsum.array().sqrt().sum());
+    const double dResidual2D = (xsum.array().sqrt().sum());
 
     // Residual LInfinity between GT 3D point and found one
-    double dResidual3D = DistanceLInfinity(XSolution, Vec3(d._X.col(k)));
+    const double dResidual3D = DistanceLInfinity(XSolution, Vec3(d._X.col(k)));
 
     // Check that 2D re-projection and 3D point are near to GT.
     EXPECT_NEAR(0.0, dResidual2D, 1e-5);

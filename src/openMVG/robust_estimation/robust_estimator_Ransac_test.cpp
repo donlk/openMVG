@@ -5,11 +5,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include "openMVG/numeric/numeric.h"
 #include "openMVG/robust_estimation/robust_estimator_lineKernel_test.hpp"
 #include "openMVG/robust_estimation/robust_estimator_Ransac.hpp"
 #include "openMVG/robust_estimation/score_evaluator.hpp"
-
-#include "openMVG/numeric/numeric.h"
 
 #include "testing/testing.h"
 
@@ -63,7 +62,7 @@ TEST(MaxConsensusLineFitter, TooFewPoints) {
         3;   // y = 2x + 1 with x = 1
   LineKernel kernel(xy);
   std::vector<size_t> vec_inliers;
-  Vec2 model = RANSAC(kernel, ScorerEvaluator<LineKernel>(0.3), &vec_inliers);
+  RANSAC(kernel, ScorerEvaluator<LineKernel>(0.3), &vec_inliers);
   CHECK_EQUAL(0, vec_inliers.size());
 }
 

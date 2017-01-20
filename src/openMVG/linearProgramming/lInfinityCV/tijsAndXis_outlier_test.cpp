@@ -4,18 +4,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/multiview/test_data_sets.hpp"
-#include "openMVG/numeric/numeric.h"
-#include "testing/testing.h"
-
-#include "openMVG/multiview/projection.hpp"
-
-#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
-#include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
-#include "openMVG/linearProgramming/linearProgrammingMOSEK.hpp"
-
 #include "openMVG/linearProgramming/bisectionLP.hpp"
+#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
+#ifdef OPENMVG_HAVE_MOSEK
+#include "openMVG/linearProgramming/linearProgrammingMOSEK.hpp"
+#endif // OPENMVG_HAVE_MOSEK
+#include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
 #include "openMVG/linearProgramming/lInfinityCV/tijsAndXis_From_xi_Ri_noise.hpp"
+#include "openMVG/multiview/test_data_sets.hpp"
+#include "openMVG/multiview/projection.hpp"
+#include "openMVG/numeric/numeric.h"
+
+#include "testing/testing.h"
 
 #include <iostream>
 #include <vector>
@@ -65,7 +65,7 @@ TEST(Translation_Structure_L_Infinity_Noisy, Outlier_OSICLP_SOLVER) {
     Mat megaMat(4, d._n*d._x[0].cols());
     {
       int cpt = 0;
-      for (int i=0; i<d._n;++i)
+      for (size_t i=0; i<d._n;++i)
       {
         const int camIndex = i;
         for (int j=0; j<d._x[0].cols(); ++j)
@@ -112,7 +112,7 @@ TEST(Translation_Structure_L_Infinity_Noisy, Outlier_OSICLP_SOLVER) {
     std::cout << std::endl << "Residual : " << std::endl;
     Vec2 xk;
     double xsum = 0.0;
-    for (int i = 0; i < d2._n; ++i) {
+    for (size_t i = 0; i < d2._n; ++i) {
         std::cout << "\nCamera : " << i << " \t:";
         for(int k = 0; k < d._x[0].cols(); ++k)
         {

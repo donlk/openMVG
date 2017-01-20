@@ -5,10 +5,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/multiview/test_data_sets.hpp"
 #include "openMVG/multiview/essential.hpp"
 #include "openMVG/multiview/solver_translation_knownRotation_kernel.hpp"
+#include "openMVG/multiview/test_data_sets.hpp"
+
 #include "testing/testing.h"
+
 #include <vector>
 
 using namespace openMVG;
@@ -45,7 +47,7 @@ TEST(Translation_knownRotation_Kernel, Multiview) {
 
     // Check that the fitted model is compatible with the data
     // Here the distance to the epipolar line is used
-    for (size_t i = 0; i < x0.cols(); ++i) {
+    for (Mat::Index i = 0; i < x0.cols(); ++i) {
       EXPECT_NEAR(0.0, kernel.Error(i, vec_t[0]), 1e-8);
     }
 

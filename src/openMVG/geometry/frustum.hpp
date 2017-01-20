@@ -4,11 +4,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OPENMVG_GEOMETRY_FRUSTUM_HPP_
-#define OPENMVG_GEOMETRY_FRUSTUM_HPP_
+#ifndef OPENMVG_GEOMETRY_FRUSTUM_HPP
+#define OPENMVG_GEOMETRY_FRUSTUM_HPP
 
 #include "openMVG/geometry/half_space_intersection.hpp"
+
 #include <fstream>
+#include <iomanip>
 
 namespace openMVG
 {
@@ -191,12 +193,13 @@ struct Frustum : public HalfPlaneObject
     // Faces count evaluation
     const size_t face_count = frustum.isInfinite() ? 4 : 6;
 
+    of << std::fixed << std::setprecision (std::numeric_limits<double>::digits10 + 1);
     of << "ply" << '\n'
       << "format ascii 1.0" << '\n'
       << "element vertex " << vertex_count << '\n'
-      << "property float x" << '\n'
-      << "property float y" << '\n'
-      << "property float z" << '\n'
+      << "property double x" << '\n'
+      << "property double y" << '\n'
+      << "property double z" << '\n'
       << "element face " << face_count << '\n'
       << "property list uchar int vertex_index" << '\n'
       << "end_header" << '\n';
@@ -204,7 +207,7 @@ struct Frustum : public HalfPlaneObject
     // Export frustums points
     {
       const std::vector<Vec3> & points = frustum.frustum_points();
-      for (int i = 0; i < points.size(); ++i)
+      for (size_t i = 0; i < points.size(); ++i)
         of << points[i].transpose() << '\n';
     }
 
@@ -241,4 +244,4 @@ struct Frustum : public HalfPlaneObject
 } // namespace geometry
 } // namespace openMVG
 
-#endif // OPENMVG_GEOMETRY_FRUSTUM_HPP_
+#endif // OPENMVG_GEOMETRY_FRUSTUM_HPP

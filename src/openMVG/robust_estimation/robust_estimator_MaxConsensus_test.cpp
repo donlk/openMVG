@@ -5,11 +5,10 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include "openMVG/numeric/numeric.h"
 #include "openMVG/robust_estimation/robust_estimator_lineKernel_test.hpp"
 #include "openMVG/robust_estimation/robust_estimator_MaxConsensus.hpp"
 #include "openMVG/robust_estimation/score_evaluator.hpp"
-
-#include "openMVG/numeric/numeric.h"
 
 #include "testing/testing.h"
 
@@ -47,9 +46,11 @@ TEST(MaxConsensusLineFitter, OutlierFree_DoNotGetBackModel) {
 
   LineKernel kernel(xy);
   std::vector<size_t> vec_inliers;
-  Vec2 model = MaxConsensus(kernel,
+  const Vec2 model = MaxConsensus(kernel,
     ScorerEvaluator<LineKernel>(0.3), &vec_inliers);
   CHECK_EQUAL(5, vec_inliers.size());
+  EXPECT_NEAR(2.0, model[1], 1e-9);
+  EXPECT_NEAR(1.0, model[0], 1e-9);
 }
 
 // Test efficiency of MaxConsensus to find (inlier/outlier) in contamined data
@@ -80,8 +81,7 @@ TEST(MaxConsensusLineFitter, TooFewPoints) {
         3;   // y = 2x + 1 with x = 1
   LineKernel kernel(xy);
   std::vector<size_t> vec_inliers;
-  Vec2 model = MaxConsensus(kernel,
-    ScorerEvaluator<LineKernel>(0.3), &vec_inliers);
+  MaxConsensus(kernel, ScorerEvaluator<LineKernel>(0.3), &vec_inliers);
   CHECK_EQUAL(0, vec_inliers.size());
 }
 

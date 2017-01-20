@@ -5,16 +5,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OPENMVG_CAMERA_INTRINSICS_H
-#define OPENMVG_CAMERA_INTRINSICS_H
+#ifndef OPENMVG_CAMERAS_CAMERA_INTRINSICS_HPP
+#define OPENMVG_CAMERAS_CAMERA_INTRINSICS_HPP
 
-#include "openMVG/numeric/numeric.h"
 #include "openMVG/cameras/Camera_Common.hpp"
 #include "openMVG/geometry/pose3.hpp"
+#include "openMVG/numeric/numeric.h"
 #include "openMVG/stl/hash.hpp"
 
-#include <cereal/cereal.hpp> // Serialization
-
+#include <cereal/types/polymorphic.hpp>
 
 namespace openMVG
 {
@@ -36,7 +35,7 @@ struct Clonable
 struct IntrinsicBase : public Clonable<IntrinsicBase>
 {
   /// Width of image
-  unsigned int w_ ;
+  unsigned int w_;
   /// Height of image
   unsigned int h_;
 
@@ -61,7 +60,7 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
   * @brief Get width of the image
   * @return width of the image
   */
-  const unsigned int w() const
+  unsigned int w() const
   {
     return w_;
   }
@@ -70,7 +69,7 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
   * @brief Get height of the image
   * @return height of the image
   */
-  const unsigned int h() const
+  unsigned int h() const
   {
     return h_;
   }
@@ -89,11 +88,11 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
     const Vec3 X = pose( pt3D ); // apply pose
     if ( this->have_disto() ) // apply disto & intrinsics
     {
-      return this->cam2ima( this->add_disto( X.head<2>() / X( 2 ) ) );
+      return this->cam2ima( this->add_disto( X.hnormalized() ) );
     }
     else // apply intrinsics
     {
-      return this->cam2ima( X.head<2>() / X( 2 ) );
+      return this->cam2ima( X.hnormalized() );
     }
   }
 
@@ -239,7 +238,7 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
   }
 
   /**
-  * @brief Generate an unique Hash from the camera parameters (used for grouping)
+  * @brief Generate a unique Hash from the camera parameters (used for grouping)
   * @return Hash value
   */
   virtual std::size_t hashValue() const
@@ -249,7 +248,7 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
     stl::hash_combine( seed, w_ );
     stl::hash_combine( seed, h_ );
     const std::vector<double> params = this->getParams();
-    for ( const auto & param : params ) 
+    for ( const auto & param : params )
       stl::hash_combine( seed , param );
     return seed;
   }
@@ -269,7 +268,7 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
 *
 * @return Angle (in degree) between the two rays
 */
-static double AngleBetweenRay(
+inline double AngleBetweenRay(
   const geometry::Pose3 & pose1,
   const IntrinsicBase * intrinsic1,
   const geometry::Pose3 & pose2,
@@ -290,5 +289,4 @@ static double AngleBetweenRay(
 } // namespace cameras
 } // namespace openMVG
 
-#endif // #ifndef OPENMVG_CAMERA_INTRINSICS_H
-
+#endif // #ifndef OPENMVG_CAMERAS_CAMERA_INTRINSICS_HPP

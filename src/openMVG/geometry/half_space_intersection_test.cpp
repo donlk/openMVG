@@ -4,10 +4,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/geometry/half_space_intersection.hpp"
 #include "openMVG/geometry/frustum.hpp"
+#include "openMVG/geometry/half_space_intersection.hpp"
+
 #include "CppUnitLite/TestHarness.h"
 #include "testing/testing.h"
+
 #include <iostream>
 
 using namespace openMVG;
@@ -27,11 +29,13 @@ TEST(HALF_PLANE, ExistingSubspace) {
   vec_hplanes.push_back(Half_plane_p(a,b,c));
   vec_hplanes.push_back(Half_plane_p(a+offset,b+offset,c+offset));
 
-  //    /\
-  // ___|____ z = 2
-  //
-  //    /\
-  // ___|____ z = 0
+  /*
+      /\
+   ___|____ z = 2
+
+      /\
+   ___|____ z = 0
+  */
 
   EXPECT_TRUE( isNotEmpty(vec_hplanes) );
 }
@@ -50,13 +54,15 @@ TEST(HALF_PLANE, EmptyIntersection) {
   vec_hplanes.push_back(Half_plane_p(a+offset,b+offset,c+offset));
   vec_hplanes[1].normal() *= -1; //invert the side of the half plane
 
-  //    /\
-  // ___|____ z = 0
-  //
-  //
-  // _______ z = -2
-  //    |
-  //   \/
+  /*
+      /\
+   ___|____ z = 0
+  
+  
+   _______ z = -2
+      |
+     \/
+  */
 
   EXPECT_FALSE( isNotEmpty(vec_hplanes) );
 }
@@ -74,11 +80,13 @@ TEST(HALF_PLANE, Side)
   half_planes_obj.planes.push_back(Half_plane_p(a,b,c));
   half_planes_obj.planes.push_back(Half_plane_p(a+offset,b+offset,c+offset));
 
-  //    /\
-  // ___|____ z = 2
-  //
-  //    /\
-  // ___|____ z = 0
+  /*
+      /\
+   ___|____ z = 2
+  
+      /\
+   ___|____ z = 0
+  */
 
 
   // Test with a point that is visible by the two half plane
