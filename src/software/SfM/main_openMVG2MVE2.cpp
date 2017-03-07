@@ -156,7 +156,6 @@ bool exportToMVE2Format(
               std::cerr << "Unable to read and write the image" << std::endl;
               return EXIT_FAILURE;
             }
-          }
         }
 
         // Prepare to write an MVE 'meta.ini' file for the current view
