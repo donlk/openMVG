@@ -8,7 +8,7 @@
 #include "openMVG/matching/indMatchDecoratorXY.hpp"
 #include "openMVG/matching/matcher_cascade_hashing.hpp"
 #include "openMVG/matching/matching_filters.hpp"
-#include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions_AllInMemory.hpp"
+#include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp"
 #include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
 
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
@@ -20,8 +20,8 @@ namespace matching_image_collection {
 using namespace openMVG::matching;
 using namespace openMVG::features;
 
-Cascade_Hashing_Matcher_Regions_AllInMemory
-::Cascade_Hashing_Matcher_Regions_AllInMemory
+Cascade_Hashing_Matcher_Regions
+::Cascade_Hashing_Matcher_Regions
 (
   float distRatio
 ):Matcher(), f_dist_ratio_(distRatio)
@@ -109,13 +109,12 @@ void Match
     const size_t dimension = regionsI.get()->DescriptorLength();
 
     Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI.get()->RegionCount(), dimension);
-    HashedDescriptions hashed_description = cascade_hasher.CreateHashedDescriptions(mat_I,
-      zero_mean_descriptor);
 #ifdef OPENMVG_USE_OPENMP
     #pragma omp critical
 #endif
     {
-      hashed_base_[I] = std::move(hashed_description);
+      hashed_base_[I] =
+        std::move(cascade_hasher.CreateHashedDescriptions(mat_I, zero_mean_descriptor));
     }
   }
 
@@ -143,7 +142,7 @@ void Match
 #endif
     for (int j = 0; j < (int)indexToCompare.size(); ++j)
     {
-      size_t J = indexToCompare[j];
+      const size_t J = indexToCompare[j];
       std::shared_ptr<features::Regions> regionsJ = regions_provider.get(J);
 
       if (regionsI.get()->Type_id() != regionsJ.get()->Type_id())
@@ -203,7 +202,11 @@ void Match
         std::cout << "[" << I << ", " << J << "]" << " " << vec_putative_matches.size() << " matches\n";
         if (!vec_putative_matches.empty())
         {
-          map_PutativesMatches.insert( make_pair( make_pair(I,J), std::move(vec_putative_matches) ));
+          map_PutativesMatches.insert(
+            std::make_pair(
+              std::make_pair(I,J),
+              std::move(vec_putative_matches)
+            ));
         }
       }
     }
@@ -211,7 +214,7 @@ void Match
 }
 } // namespace impl
 
-void Cascade_Hashing_Matcher_Regions_AllInMemory::Match
+void Cascade_Hashing_Matcher_Regions::Match
 (
   const sfm::SfM_Data & sfm_data,
   const std::shared_ptr<sfm::Regions_Provider> & regions_provider,
@@ -228,7 +231,7 @@ void Cascade_Hashing_Matcher_Regions_AllInMemory::Match
   if (regions_provider->IsBinary())
     return;
 
-  if(regions_provider->Type_id() == typeid(unsigned char).name())
+  if (regions_provider->Type_id() == typeid(unsigned char).name())
   {
     impl::Match<unsigned char>(
       sfm_data,
@@ -238,7 +241,7 @@ void Cascade_Hashing_Matcher_Regions_AllInMemory::Match
       map_PutativesMatches);
   }
   else
-  if(regions_provider->Type_id() == typeid(float).name())
+  if (regions_provider->Type_id() == typeid(float).name())
   {
     impl::Match<float>(
       sfm_data,

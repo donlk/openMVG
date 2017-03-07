@@ -58,7 +58,7 @@ void BuildActionMatrix(Matrix & L, const Mat &x, const Mat &y)  {
   }
 }
 
-void FourPointSolver::Solve(const Mat &x, const Mat &y, vector<Mat3> *Hs) {
+void FourPointSolver::Solve(const Mat &x, const Mat &y, std::vector<Mat3> *Hs) {
   assert(2 == x.rows());
   assert(4 <= x.cols());
   assert(x.rows() == y.rows());
@@ -80,8 +80,8 @@ void FourPointSolver::Solve(const Mat &x, const Mat &y, vector<Mat3> *Hs) {
     BuildActionMatrix(L, x, y);
     Nullspace(&L, &h);
   }
-  Mat3 H = Map<RMat3>(h.data()); // map the linear vector as the H matrix
-  Hs->push_back(H);
+  // map the linear vector as the H matrix and save it
+  Hs->emplace_back(Map<RMat3>(h.data()));
 }
 
 }  // namespace kernel
