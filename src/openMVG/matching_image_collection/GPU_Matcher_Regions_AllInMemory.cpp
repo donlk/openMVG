@@ -12,6 +12,7 @@
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 
 #include "gpu/LatchBitMatcher.hpp"
+#include "gpu/BruteForceHammingMatcher.hpp"
 #include "gpu/BruteForceL2Matcher.hpp"
 
 namespace openMVG {
@@ -60,12 +61,11 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 		switch (eMatcherType_) {
 			case BRUTE_FORCE_HAMMING:
 			{
-				LatchBitMatcher matchers[indexToCompare.size()];
+				std::vector<LatchBitMatcherMatch> matchedPoints[indexToCompare.size()];
 #ifdef OPENMVG_USE_OPENMP
-				omp_set_num_threads(1);
 				#pragma omp parallel for schedule(dynamic)
 #endif
-				for (int j = 0; j < static_cast<int>(indexToCompare.size()); ++j)
+				for (int j = 0; j < (int)indexToCompare.size(); ++j)
 				{
 					const size_t J = indexToCompare[j];
 
@@ -74,12 +74,33 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 					{
 						continue;
 					}
-					// LatchClassifier for the GPU
-					matchers[j].match(
-						const_cast<unsigned int*>(static_cast<const unsigned int*>(regionsI.DescriptorRawData())),
-						const_cast<unsigned int*>(static_cast<const unsigned int*>(regionsJ.DescriptorRawData())), 
-						regionsI.RegionCount(), 
-						regionsJ.RegionCount());
+
+					switch (regionsI.DescriptorLength()) {
+						case 32: {
+							GPUBruteForceHammingMatcher<unsigned char, 32> matcher(f_dist_ratio_);
+							matcher.match(
+								const_cast<unsigned char*>(static_cast<const unsigned char*>(regionsI.DescriptorRawData())),
+								const_cast<unsigned char*>(static_cast<const unsigned char*>(regionsJ.DescriptorRawData())), 
+								regionsI.RegionCount(), 
+								regionsJ.RegionCount());
+							matchedPoints[j] = matcher.retrieveMatches();
+							break;
+						}
+						case 128: {
+							LatchBitMatcher matcher;
+								// LatchClassifier for the GPU
+								matcher.match(
+									const_cast<unsigned int*>(static_cast<const unsigned int*>(regionsI.DescriptorRawData())),
+									const_cast<unsigned int*>(static_cast<const unsigned int*>(regionsJ.DescriptorRawData())), 
+									regionsI.RegionCount(), 
+									regionsJ.RegionCount());
+								matchedPoints[j] = matcher.retrieveMatches();
+								break;
+							}
+						default: {
+							break;
+						}
+					}
 				}
 #ifdef OPENMVG_USE_OPENMP
 				#pragma omp parallel for schedule(dynamic)
@@ -87,11 +108,10 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 				for (int j = 0; j < static_cast<int>(indexToCompare.size()); j++)
 				{
 					const size_t J = indexToCompare[j];
-		 
-					std::vector<LatchBitMatcherMatch> matchedPoints = matchers[j].retrieveMatches();
+
 					IndMatches vec_putatives_matches;
-					for (size_t k = 0; k < matchedPoints.size(); k++) {
-						vec_putatives_matches.push_back(IndMatch(matchedPoints[k].queryIdx, matchedPoints[k].trainIdx));
+					for (size_t k = 0; k < matchedPoints[j].size(); k++) {
+						vec_putatives_matches.push_back(IndMatch(matchedPoints[j][k].queryIdx, matchedPoints[j][k].trainIdx));
 					}
 
 #ifdef OPENMVG_USE_OPENMP
@@ -105,7 +125,6 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 						}
 					}
 				}
-				break;
 			}
 			case BRUTE_FORCE_L2:
 			{
@@ -180,7 +199,7 @@ void GPU_Matcher_Regions_AllInMemory::Match(
 #ifdef OPENMVG_USE_OPENMP
 				#pragma omp parallel for schedule(dynamic)
 #endif
-				for (int j = 0; j < (int)indexToCompare.size(); j++)
+				for (int j = 0; j < static_cast<int>(indexToCompare.size()); j++)
 				{
 					const size_t J = indexToCompare[j];
 		 

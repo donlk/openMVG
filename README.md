@@ -88,6 +88,10 @@ publications are relevant:
 [6] Moulon Pierre, Monasse Pascal and Marlet Renaud. ICCV 2013.
 [Global Fusion of Relative Motions for Robust, Accurate and Scalable Structure from Motion.](http://imagine.enpc.fr/~moulonp/publis/iccv2013/index.html)
 
+[7] Christopher Parker, Matthew Daiter, Kareem Omar, Gil Levi and Tal Hassner. ECCV Workshop 2016. [The CUDA LATCH Binary Descriptor: Because Sometimes Faster Means Better, Workshop on Local Features: State of the art, open problems and performance evaluation.](http://www.openu.ac.il/home/hassner/projects/LATCH/)
+
+[8] Gil Levi and Tal Hassner. WACV, 2016. [LATCH: Learned Arrangements of Three Patch Codes](http://www.openu.ac.il/home/hassner/projects/LATCH/)
+
 or cite it as:
 
 ```
@@ -98,3 +102,27 @@ or cite it as:
   }
 ```
 
+as well as (for LATCH):
+
+```
+@inproceedings{Parkeretal2016CLATCH,
+  title={The {CUDA} {LATCH} Binary Descriptor: Because Sometimes Faster Means Better},
+  author={Christopher Parker and Matthew Daiter and Kareem Omar and Gil Levi and Tal Hassner},
+  booktitle={European Conference on Computer Vision (ECCV) workshops},
+  year={2016},
+  url = {http://www.openu.ac.il/home/hassner/projects/LATCH}
+}
+```
+
+and
+
+```
+@inproceedings{LeviHassner2016LATCH,
+  title={{LATCH:} Learned Arrangements of Three Patch Codes},
+  author={Gil Levi and Tal Hassner},
+  booktitle={Winter Conference on Applications of Computer Vision ({WACV})},
+  year={2016},
+  organization={IEEE},
+  url = {http://www.openu.ac.il/home/hassner/projects/LATCH}
+}
+```

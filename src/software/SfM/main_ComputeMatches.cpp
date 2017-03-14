@@ -112,14 +112,16 @@ int main(int argc, char **argv)
       << "  AUTO: auto choice from regions type,\n"
       << "  For Scalar based regions descriptor:\n"
       << "    BRUTEFORCEL2: L2 BruteForce matching,\n"
-      << "    GPUBRUTEFORCEL2: L2 BruteForce matching (GPU, 128 bit float expected),\n"
+      << "    GPUBRUTEFORCEL2: L2 BruteForce matching (GPU),\n"
       << "    ANNL2: L2 Approximate Nearest Neighbor matching,\n"
       << "    CASCADEHASHINGL2: L2 Cascade Hashing matching.\n"
       << "    FASTCASCADEHASHINGL2: (default)\n"
       << "      L2 Cascade Hashing with precomputed hashed regions\n"
       << "     (faster than CASCADEHASHINGL2 but use more memory).\n"
       << "  For Binary based descriptor:\n"
+      << "    GPU_LATCH: BruteForce Hamming matching specifically for LATCH.\n"
       << "    BRUTEFORCEHAMMING: BruteForce Hamming matching.\n"
+      << "    GPUBRUTEFORCEHAMMING: BruteForce Hamming matching (GPU).\n"
       << "[-m|--guided_matching]\n"
       << "  use the found model to improve the pairwise correspondences."
       << std::endl;
@@ -298,6 +300,12 @@ int main(int argc, char **argv)
       collectionMatcher.reset(new Matcher_Regions_AllInMemory(fDistRatio, BRUTE_FORCE_HAMMING));
     }
     else
+    if (sNearestMatchingMethod == "GPUBRUTEFORCEHAMMING")
+    {
+      std::cout << "Using GPU_BRUTE_FORCE_HAMMING matcher" << std::endl;
+      collectionMatcher.reset(new GPU_Matcher_Regions_AllInMemory(fDistRatio, BRUTE_FORCE_HAMMING));
+    }
+    else
     if (sNearestMatchingMethod == "ANNL2")
     {
       std::cout << "Using ANN_L2 matcher" << std::endl;
@@ -324,7 +332,7 @@ int main(int argc, char **argv)
     else
     if (sNearestMatchingMethod == "GPUBRUTEFORCEL2")
     {
-      std::cout << "Using GPU_LATCH matcher" << std::endl;
+      std::cout << "Using GPU_BRUTE_FORCE_L2 matcher" << std::endl;
       collectionMatcher.reset(new GPU_Matcher_Regions_AllInMemory(fDistRatio, BRUTE_FORCE_L2));
     }
     if (!collectionMatcher)

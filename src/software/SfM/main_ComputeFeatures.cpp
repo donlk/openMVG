@@ -239,6 +239,12 @@ int main(int argc, char **argv)
       image_describer.reset(new DEEP_Image_describer(DEEPParams(PNNET)));
       force_single_thread = true;
     }
+    else
+    if (sImage_Describer_Method == "ORB")
+    {
+      image_describer.reset(new ORB_Image_describer(ORBParams(ORB)));
+      force_single_thread = true;
+    }
     //image_describer.reset(new AKAZE_Image_describer(AKAZEParams(AKAZEConfig(), AKAZE_LIOP), !bUpRight));
     if (!image_describer)
     {
@@ -270,22 +276,15 @@ int main(int argc, char **argv)
       archive(cereal::make_nvp("regions_type", regionsType));
     }
   }
-/*#ifdef OPENMVG_USE_OPENMP
-  const unsigned int nb_max_thread = 1;//omp_get_max_threads();
-#endif
 
 #ifdef OPENMVG_USE_OPENMP
-  omp_set_num_threads(iNumThreads);
-  if (iNumThreads == 0) omp_set_num_threads(1);
-  #pragma omp parallel for schedule(static)
+    if(iNumThreads == 0) iNumThreads = omp_get_max_threads();
+    const unsigned int nb_max_thread = force_single_thread ? 1 : omp_get_max_threads();
+    omp_set_num_threads(std::min<unsigned int>(iNumThreads, nb_max_thread));
+    #pragma omp parallel for schedule(dynamic) if(iNumThreads > 0) 
 #endif
   for(int i = 0; i < sfm_data.views.size(); ++i)
   {
-#ifdef OPENMVG_USE_OPENMP
-    if(iNumThreads == 0) omp_set_num_threads(nb_max_thread);
-#endif*/
-
-
   // Feature extraction routines
   // For each View of the SfM_Data container:
   // - if regions file exists continue,

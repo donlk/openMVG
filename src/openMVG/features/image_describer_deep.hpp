@@ -11,6 +11,7 @@
 #include <limits>
 #include <numeric>
 #include <cereal/cereal.hpp>
+#include <third_party/stlplus3/filesystemSimplified/file_system.hpp>
 
 #include "openMVG/features/deep/src/DeepClassifier.hpp"
 #include "openMVG/features/deep/src/DeepClassifierTHNets.hpp"
@@ -41,7 +42,7 @@ struct DEEPParams
 {
   // Because of the absurdities of C++ not having an enum -> string generator
   const std::string DeepDescriptorFileName(EDEEP_DESCRIPTOR descriptor) {
-    const std::string& modelDir = "./deep/networks/";
+    const std::string& modelDir = stlplus::folder_part(__FILE__) + "/deep/networks/";
     switch (descriptor) {
       case SIAM_2_STREAM_DESC_NOTRE_DAME: {
         const std::string modelStr(modelDir + "siam2stream/siam2stream_desc_notredame.bin");
@@ -282,5 +283,5 @@ private:
 #include <cereal/types/polymorphic.hpp>
 #include <cereal/archives/json.hpp>
 CEREAL_REGISTER_TYPE_WITH_NAME(openMVG::features::DEEP_Image_describer, "DEEP_Image_describer");
-
+CEREAL_REGISTER_POLYMORPHIC_RELATION(openMVG::features::Image_describer, openMVG::features::DEEP_Image_describer)
 #endif // OPENMVG_FEATURES_DEEP_IMAGE_DESCRIBER_HPP
