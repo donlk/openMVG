@@ -17,7 +17,6 @@
 
 #include "third_party/cmdLine/cmdLine.h"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
-#include "third_party/progress/progress.hpp"
 
 #include <cstdlib>
 #include <fstream>
@@ -148,8 +147,7 @@ int main(int argc, char **argv)
       << "The input file \""<< sSfM_Data_Filename << "\" cannot be read" << std::endl;
     return EXIT_FAILURE;
   }
-  C_Progress_display my_progress_bar( sfm_data.GetViews().size(),
-    std::cout, "\n- EXTRACT FEATURES -\n" );
+  std::cout << "\n- EXTRACT FEATURES -\n";
 
 
   // b. Init the image_describer
@@ -296,15 +294,6 @@ int main(int argc, char **argv)
     if(stlplus::file_exists(sGlobalMask_filename))
       ReadImage(sGlobalMask_filename.c_str(), &globalMask);
 
-      std::cout << "\n- EXTRACT FEATURES -\n";
-#ifdef OPENMVG_USE_OPENMP
-    if(iNumThreads == 0) iNumThreads = omp_get_max_threads();
-    const unsigned int nb_max_thread = force_single_thread ? 1 : omp_get_max_threads();
-    omp_set_num_threads(std::min<unsigned int>(iNumThreads, nb_max_thread));
-    #pragma omp parallel for schedule(dynamic) if(iNumThreads > 0) private(imageMask)
-#endif
-    for(int i = 0; i < sfm_data.views.size(); ++i)
-    {
       Views::const_iterator iterViews = sfm_data.views.begin();
       std::advance(iterViews, i);
       const View * view = iterViews->second.get();
