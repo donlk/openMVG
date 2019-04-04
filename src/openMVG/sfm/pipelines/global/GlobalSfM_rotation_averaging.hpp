@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,8 +9,10 @@
 #ifndef OPENMVG_SFM_GLOBAL_ENGINE_PIPELINES_GLOBAL_ROTATION_AVERAGING_HPP
 #define OPENMVG_SFM_GLOBAL_ENGINE_PIPELINES_GLOBAL_ROTATION_AVERAGING_HPP
 
-namespace openMVG{
-namespace sfm{
+#include <vector>
+
+namespace openMVG {
+namespace sfm {
 
 enum ERotationAveragingMethod
 {
@@ -26,12 +29,12 @@ enum ERelativeRotationInferenceMethod
 } // namespace sfm
 } // namespace openMVG
 
-#include "openMVG/sfm/sfm.hpp"
-#include "openMVG/graph/graph.hpp"
+namespace openMVG { namespace graph { struct Triplet; } }
+#include "openMVG/types.hpp"
 #include "openMVG/multiview/rotation_averaging_common.hpp"
 
-namespace openMVG{
-namespace sfm{
+namespace openMVG {
+namespace sfm {
 
 class GlobalSfM_Rotation_AveragingSolver
 {
@@ -50,7 +53,7 @@ public:
   ///  angular error once rotation composition have been computed.
   void TripletRotationRejection(
     const double max_angular_error,
-    std::vector< graph::Triplet > & vec_triplets,
+    std::vector<graph::Triplet> & vec_triplets,
     rotation_averaging::RelativeRotations & relativeRotations) const;
 
   /// Return the pairs validated by the GlobalRotation routine (inference can remove some)

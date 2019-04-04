@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,10 +9,10 @@
 #ifndef OPENMVG_LINEAR_PROGRAMMING_LINEAR_PROGRAMMING_OSI_X_HPP
 #define OPENMVG_LINEAR_PROGRAMMING_LINEAR_PROGRAMMING_OSI_X_HPP
 
-#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
-
 #include <memory>
 #include <vector>
+
+#include "openMVG/linearProgramming/linearProgrammingInterface.hpp"
 
 class OsiClpSolverInterface;
 
@@ -20,8 +22,8 @@ namespace linearProgramming  {
 /// OSI_Clp wrapper for the LP_Solver
 class OSI_X_SolverWrapper : public LP_Solver
 {
-public :
-  OSI_X_SolverWrapper(int nbParams);
+public:
+  explicit OSI_X_SolverWrapper(int nbParams);
 
   //--
   // Inherited functions:
@@ -34,7 +36,7 @@ public :
 
   bool getSolution(std::vector<double> & estimatedParams) override;
 
-private :
+private:
   std::shared_ptr<OsiClpSolverInterface> si;
 };
 

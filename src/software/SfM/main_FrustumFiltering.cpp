@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -5,11 +6,13 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <cstdlib>
-
-#include "openMVG/sfm/sfm.hpp"
-#include "openMVG/system/timer.hpp"
+#include "openMVG/geometry/frustum.hpp"
 #include "openMVG/matching_image_collection/Pair_Builder.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_filters_frustum.hpp"
+#include "openMVG/sfm/sfm_data_io.hpp"
+#include "openMVG/system/timer.hpp"
+#include "openMVG/types.hpp"
 
 #include "third_party/cmdLine/cmdLine.h"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
@@ -81,7 +84,7 @@ int main(int argc, char **argv)
   try {
     if (argc == 1) throw std::string("Invalid parameter.");
     cmd.process(argc, argv);
-  } catch(const std::string& s) {
+  } catch (const std::string& s) {
     std::cerr << "Usage: " << argv[0] << '\n'
     << "[-i|--input_file] path to a SfM_Data scene\n"
     << "[-o|--output_file] filename of the output pair file\n"

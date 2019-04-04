@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -5,14 +6,18 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/geometry/half_space_intersection.hpp"
-#include "openMVG/sfm/sfm.hpp"
 #include "openMVG/sfm/sfm_data_filters_frustum.hpp"
+
+#include "openMVG/cameras/Camera_Pinhole.hpp"
+#include "openMVG/geometry/pose3.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
 #include "openMVG/stl/stl.hpp"
-#include "openMVG/types.hpp"
+
+#include "third_party/progress/progress_display.hpp"
 
 #include <fstream>
 #include <iomanip>
+#include <iterator>
 
 namespace openMVG {
 namespace sfm {
@@ -51,13 +56,13 @@ void Frustum_Filter::initFrustum
     if (!sfm_data.IsPoseAndIntrinsicDefined(view))
       continue;
     Intrinsics::const_iterator iterIntrinsic = sfm_data.GetIntrinsics().find(view->id_intrinsic);
-    if (!isPinhole(iterIntrinsic->second.get()->getType()))
+    if (!isPinhole(iterIntrinsic->second->getType()))
       continue;
 
     const Pose3 pose = sfm_data.GetPoseOrDie(view);
 
     const Pinhole_Intrinsic * cam = dynamic_cast<const Pinhole_Intrinsic*>(iterIntrinsic->second.get());
-    if (cam == NULL)
+    if (!cam)
       continue;
 
     if (!_bTruncated) // use infinite frustum
@@ -86,7 +91,7 @@ const
   // List active view Id
   std::vector<IndexT> viewIds;
   viewIds.reserve(z_near_z_far_perView.size());
-  std::transform(z_near_z_far_perView.begin(), z_near_z_far_perView.end(),
+  std::transform(z_near_z_far_perView.cbegin(), z_near_z_far_perView.cend(),
     std::back_inserter(viewIds), stl::RetrieveKey());
 
   C_Progress_display my_progress_bar(
@@ -114,16 +119,11 @@ const
         #pragma omp critical
 #endif
         {
-          pairs.insert(std::make_pair(viewIds[i], viewIds[j]));
+          pairs.insert({viewIds[i], viewIds[j]});
         }
       }
       // Progress bar update
-#ifdef OPENMVG_USE_OPENMP
-      #pragma omp critical
-#endif
-      {
-        ++my_progress_bar;
-      }
+      ++my_progress_bar;
     }
   }
   return pairs;
@@ -205,7 +205,7 @@ const
     }
   }
   of.flush();
-  bool bOk = of.good();
+  const bool bOk = of.good();
   of.close();
   return bOk;
 }
@@ -236,7 +236,7 @@ void Frustum_Filter::init_z_near_z_far_depth
           continue;
 
         const Pose3 pose = sfm_data.GetPoseOrDie(view);
-        const double z = pose.depth(X);
+        const double z = Depth(pose.rotation(), pose.translation(), X);
         NearFarPlanesT::iterator itZ = z_near_z_far_perView.find(id_view);
         if (itZ != z_near_z_far_perView.end())
         {
@@ -247,7 +247,7 @@ void Frustum_Filter::init_z_near_z_far_depth
             itZ->second.second = z;
         }
         else
-          z_near_z_far_perView[id_view] = std::make_pair(z,z);
+          z_near_z_far_perView[id_view] = {z,z};
       }
     }
   }
@@ -261,11 +261,10 @@ void Frustum_Filter::init_z_near_z_far_depth
       if (!sfm_data.IsPoseAndIntrinsicDefined(view))
         continue;
       if (z_near_z_far_perView.find(view->id_view) == z_near_z_far_perView.end())
-        z_near_z_far_perView[view->id_view] = std::make_pair(zNear, zFar);
+        z_near_z_far_perView[view->id_view] = {zNear, zFar};
     }
   }
 }
 
 } // namespace sfm
 } // namespace openMVG
-

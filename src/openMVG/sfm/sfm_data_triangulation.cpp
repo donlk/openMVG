@@ -1,18 +1,23 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2015 Pierre Moulon.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#include "openMVG/sfm/sfm_data_triangulation.hpp"
+
+#include <deque>
+#include <functional>
+
+#include "openMVG/geometry/pose3.hpp"
 #include "openMVG/multiview/triangulation_nview.hpp"
 #include "openMVG/robust_estimation/rand_sampling.hpp"
 #include "openMVG/sfm/sfm_data.hpp"
-#include "openMVG/sfm/sfm_data_triangulation.hpp"
+#include "openMVG/sfm/sfm_landmark.hpp"
 
-#include "third_party/progress/progress.hpp"
-
-#include <deque>
-#include <memory>
+#include "third_party/progress/progress_display.hpp"
 
 namespace openMVG {
 namespace sfm {
@@ -23,8 +28,8 @@ using namespace openMVG::cameras;
 SfM_Data_Structure_Computation_Basis::SfM_Data_Structure_Computation_Basis
 (
   bool bConsoleVerbose
-):
-  bConsole_verbose_(bConsoleVerbose)
+)
+  :bConsole_verbose_(bConsoleVerbose)
 {
 }
 
@@ -36,6 +41,111 @@ SfM_Data_Structure_Computation_Blind::SfM_Data_Structure_Computation_Blind
 {
 }
 
+/// Triangulate a given set of observations
+bool track_triangulation
+(
+  const SfM_Data & sfm_data,
+  const Observations & obs,
+  Vec3 & X
+)
+{
+  if (obs.size() >= 2)
+  {
+    std::vector<Vec3> bearing;
+    std::vector<Mat34> poses;
+    bearing.reserve(obs.size());
+    poses.reserve(obs.size());
+    for (const auto& observation : obs)
+    {
+      const View * view = sfm_data.views.at(observation.first).get();
+      if (!sfm_data.IsPoseAndIntrinsicDefined(view))
+        continue;
+      const IntrinsicBase * cam = sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
+      const Pose3 pose = sfm_data.GetPoseOrDie(view);
+      bearing.emplace_back((*cam)(cam->get_ud_pixel(observation.second.x)));
+      poses.emplace_back(pose.asMatrix());
+    }
+    if (bearing.size() >= 2)
+    {
+      const Eigen::Map<const Mat3X> bearing_matrix(bearing[0].data(), 3, bearing.size());
+      Vec4 Xhomogeneous;
+      if (TriangulateNViewAlgebraic
+      (
+        bearing_matrix,
+        poses,
+        &Xhomogeneous))
+      {
+        X = Xhomogeneous.hnormalized();
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Test if a predicate is true for each observation
+// i.e: predicate could be:
+// - cheirality test (depth test): cheirality_predicate
+// - cheirality and residual error: ResidualAndCheiralityPredicate::predicate
+bool track_check_predicate
+(
+  const Observations & obs,
+  const SfM_Data & sfm_data,
+  const Vec3 & X,
+  std::function<bool(
+    const IntrinsicBase&,
+    const Pose3&,
+    const Vec2&,
+    const Vec3&)> predicate
+)
+{
+  bool visibility = false; // assume that no observation has been looked yet
+  for (const auto & obs_it : obs)
+  {
+    const View * view = sfm_data.views.at(obs_it.first).get();
+    if (!sfm_data.IsPoseAndIntrinsicDefined(view))
+      continue;
+    visibility = true; // at least an observation is evaluated
+    const IntrinsicBase * cam = sfm_data.intrinsics.at(view->id_intrinsic).get();
+    const Pose3 pose = sfm_data.GetPoseOrDie(view);
+    if (!predicate(*cam, pose, obs_it.second.x, X))
+      return false;
+  }
+  return visibility;
+}
+
+bool cheirality_predicate
+(
+  const IntrinsicBase& cam,
+  const Pose3& pose,
+  const Vec2& x,
+  const Vec3& X
+)
+{
+  return CheiralityTest(cam(x), pose, X);
+}
+
+struct ResidualAndCheiralityPredicate
+{
+  const double squared_pixel_threshold_;
+
+  ResidualAndCheiralityPredicate(const double squared_pixel_threshold)
+    :squared_pixel_threshold_(squared_pixel_threshold){}
+
+  bool predicate
+  (
+    const IntrinsicBase& cam,
+    const Pose3& pose,
+    const Vec2& x,
+    const Vec3& X
+  )
+  {
+    const Vec2 residual = cam.residual(pose(X), x);
+    return CheiralityTest(cam(x), pose, X) &&
+           residual.squaredNorm() < squared_pixel_threshold_;
+  }
+};
+
 void SfM_Data_Structure_Computation_Blind::triangulate
 (
   SfM_Data & sfm_data
@@ -43,18 +153,17 @@ void SfM_Data_Structure_Computation_Blind::triangulate
 const
 {
   std::deque<IndexT> rejectedId;
-  std::unique_ptr<C_Progress_display> my_progress_bar;
+  std::unique_ptr<C_Progress> my_progress_bar;
   if (bConsole_verbose_)
-    my_progress_bar.reset( new C_Progress_display(
-    sfm_data.structure.size(),
-    std::cout,
-    "Blind triangulation progress:\n" ));
+    my_progress_bar.reset(
+      new C_Progress_display(
+        sfm_data.structure.size(),
+        std::cout,
+        "Blind triangulation progress:\n" ));
 #ifdef OPENMVG_USE_OPENMP
   #pragma omp parallel
 #endif
-  for(Landmarks::iterator iterTracks = sfm_data.structure.begin();
-    iterTracks != sfm_data.structure.end();
-    ++iterTracks)
+  for (auto& tracks_it :sfm_data.structure)
   {
 #ifdef OPENMVG_USE_OPENMP
   #pragma omp single nowait
@@ -62,53 +171,30 @@ const
     {
       if (bConsole_verbose_)
       {
-#ifdef OPENMVG_USE_OPENMP
-  #pragma omp critical
-#endif
         ++(*my_progress_bar);
       }
-      // Triangulate each landmark
-      Triangulation trianObj;
-      const Observations & obs = iterTracks->second.obs;
-      for(Observations::const_iterator itObs = obs.begin();
-        itObs != obs.end(); ++itObs)
+
+      const Observations & obs = tracks_it.second.obs;
+      bool bKeep = false;
       {
-        const View * view = sfm_data.views.at(itObs->first).get();
-        if (sfm_data.IsPoseAndIntrinsicDefined(view))
+        // Generate the track 3D hypothesis
+        Vec3 X;
+        if (track_triangulation(sfm_data, obs, X))
         {
-          const IntrinsicBase * cam = sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
-          const Pose3 pose = sfm_data.GetPoseOrDie(view);
-          trianObj.add(
-            cam->get_projective_equivalent(pose),
-            cam->get_ud_pixel(itObs->second.x));
+          // Keep the point only if it has a positive depth for all obs
+          if (track_check_predicate(obs, sfm_data, X, cheirality_predicate))
+          {
+            tracks_it.second.X = X;
+            bKeep = true;
+          }
         }
       }
-      if (trianObj.size() < 2)
+      if (!bKeep)
       {
 #ifdef OPENMVG_USE_OPENMP
         #pragma omp critical
 #endif
-        {
-          rejectedId.push_front(iterTracks->first);
-        }
-      }
-      else
-      {
-        // Compute the 3D point
-        const Vec3 X = trianObj.compute();
-        if (trianObj.minDepth() > 0) // Keep the point only if it have a positive depth
-        {
-          iterTracks->second.X = X;
-        }
-        else
-        {
-#ifdef OPENMVG_USE_OPENMP
-          #pragma omp critical
-#endif
-          {
-            rejectedId.push_front(iterTracks->first);
-          }
-        }
+        rejectedId.push_front(tracks_it.first);
       }
     }
   }
@@ -122,10 +208,14 @@ const
 SfM_Data_Structure_Computation_Robust::SfM_Data_Structure_Computation_Robust
 (
   const double max_reprojection_error,
+  const IndexT min_required_inliers,
+  const IndexT min_sample_index,
   bool bConsoleVerbose
 ):
   SfM_Data_Structure_Computation_Basis(bConsoleVerbose),
-  max_reprojection_error_(max_reprojection_error)
+  max_reprojection_error_(max_reprojection_error),
+  min_required_inliers_(min_required_inliers),
+  min_sample_index_(min_sample_index)
 {
 }
 
@@ -150,16 +240,15 @@ const
   std::deque<IndexT> rejectedId;
   std::unique_ptr<C_Progress_display> my_progress_bar;
   if (bConsole_verbose_)
-    my_progress_bar.reset( new C_Progress_display(
-    sfm_data.structure.size(),
-    std::cout,
-    "Robust triangulation progress:\n" ));
+    my_progress_bar.reset(
+      new C_Progress_display(
+        sfm_data.structure.size(),
+        std::cout,
+        "Robust triangulation progress:\n" ));
 #ifdef OPENMVG_USE_OPENMP
   #pragma omp parallel
 #endif
-  for(Landmarks::iterator iterTracks = sfm_data.structure.begin();
-    iterTracks != sfm_data.structure.end();
-    ++iterTracks)
+  for (auto& tracks_it :sfm_data.structure)
   {
 #ifdef OPENMVG_USE_OPENMP
   #pragma omp single nowait
@@ -167,25 +256,20 @@ const
     {
       if (bConsole_verbose_)
       {
-#ifdef OPENMVG_USE_OPENMP
-  #pragma omp critical
-#endif
         ++(*my_progress_bar);
       }
       Landmark landmark;
-      if (robust_triangulation(sfm_data, iterTracks->second.obs, landmark))
+      if (robust_triangulation(sfm_data, tracks_it.second.obs, landmark))
       {
-        iterTracks->second = landmark;
+        tracks_it.second = landmark;
       }
       else
       {
         // Track must be deleted
 #ifdef OPENMVG_USE_OPENMP
-  #pragma omp critical
+        #pragma omp critical
 #endif
-        {
-          rejectedId.push_front(iterTracks->first);
-        }
+        rejectedId.push_front(tracks_it.first);
       }
     }
   }
@@ -196,25 +280,67 @@ const
   }
 }
 
-/// Robustly try to estimate the best 3D point using a ransac Scheme
-/// A point must be seen in at least 3 views
+Observations ObservationsSampler
+(
+  const Observations & obs,
+  const std::vector<std::uint32_t> & samples
+)
+{
+  Observations sampled_obs;
+  for (const auto& idx : samples)
+  {
+    Observations::const_iterator obs_it = obs.cbegin();
+    std::advance(obs_it, idx);
+    sampled_obs.insert(*obs_it);
+  }
+  return sampled_obs;
+}
+
+/// Robustly try to estimate the best 3D point using a ransac scheme
+/// A point must be seen in at least min_required_inliers views
 /// Return true for a successful triangulation
 bool SfM_Data_Structure_Computation_Robust::robust_triangulation
 (
   const SfM_Data & sfm_data,
   const Observations & obs,
-  Landmark & landmark, // X & valid observations
-  const IndexT min_required_inliers,
-  const IndexT min_sample_index
+  Landmark & landmark // X & valid observations
 )
 const
 {
-  if (obs.size() < 3)
+  if (obs.size() < min_required_inliers_ || obs.size() < min_sample_index_)
   {
     return false;
   }
 
   const double dSquared_pixel_threshold = Square(max_reprojection_error_);
+
+  // Predicate to validate a sample (cheirality and residual error)
+  ResidualAndCheiralityPredicate predicate(dSquared_pixel_threshold);
+  auto predicate_binding = std::bind(&ResidualAndCheiralityPredicate::predicate,
+                                     predicate,
+                                     std::placeholders::_1,
+                                     std::placeholders::_2,
+                                     std::placeholders::_3,
+                                     std::placeholders::_4);
+
+  // Handle the case where all observations must be used
+  if (min_required_inliers_ == min_sample_index_ &&
+      obs.size() == min_required_inliers_)
+  {
+    // Generate the 3D point hypothesis by triangulating all the observations
+    Vec3 X;
+    if (track_triangulation(sfm_data, obs, X) &&
+        track_check_predicate(obs, sfm_data, X, predicate_binding))
+    {
+      landmark.X = X;
+      landmark.obs = obs;
+      return true;
+    }
+    return false;
+  }
+
+  // else we perform a robust estimation since
+  //  there is more observations than the minimal number of required sample.
 
   const IndexT nbIter = obs.size(); // TODO: automatic computation of the number of iterations?
 
@@ -223,70 +349,60 @@ const
   std::deque<IndexT> best_inlier_set;
   double best_error = std::numeric_limits<double>::max();
 
+  //--
+  // Random number generation
+  std::mt19937 random_generator(std::mt19937::default_seed);
+
   // - Ransac loop
   for (IndexT i = 0; i < nbIter; ++i)
   {
-    std::vector<uint32_t> vec_samples;
-    robust::UniformSample(min_sample_index, obs.size(), &vec_samples);
-    const std::set<IndexT> samples(vec_samples.begin(), vec_samples.end());
+    std::vector<uint32_t> samples;
+    robust::UniformSample(min_sample_index_, obs.size(), random_generator, &samples);
 
-    // Hypothesis generation.
-    const Vec3 current_model = track_sample_triangulation(sfm_data, obs, samples);
+    // Hypothesis generation
+    Vec3 X;
+    if (!track_triangulation(sfm_data, ObservationsSampler(obs, samples), X))
+      continue;
 
     // Test validity of the hypothesis
-    // - chierality (for the samples)
-    // - residual error
-
-    // Chierality (Check the point is in front of the sampled cameras)
-    bool bChierality = true;
-    bool bReprojection_error = true;
-    for (std::set<IndexT>::const_iterator it = samples.begin();
-      it != samples.end() && bChierality && bReprojection_error; ++it)
-    {
-      Observations::const_iterator itObs = obs.begin();
-      std::advance(itObs, *it);
-      const View * view = sfm_data.views.at(itObs->first).get();
-      const IntrinsicBase * cam = sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
-      const Pose3 pose = sfm_data.GetPoseOrDie(view);
-      const double z = pose.depth(current_model);
-      bChierality &= z > 0;
-      const Vec2 residual = cam->residual(pose, current_model, itObs->second.x);
-      bReprojection_error &= residual.squaredNorm() < dSquared_pixel_threshold;
-    }
-
-    if (!bChierality || !bReprojection_error)
+    if (!track_check_predicate(obs, sfm_data, X, predicate_binding))
       continue;
 
     std::deque<IndexT> inlier_set;
     double current_error = 0.0;
     // inlier/outlier classification according pixel residual errors.
-    for (Observations::const_iterator itObs = obs.begin();
-        itObs != obs.end(); ++itObs)
+    for (const auto & obs_it : obs)
     {
-      const View * view = sfm_data.views.at(itObs->first).get();
-      const IntrinsicBase * intrinsic = sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
+      const View * view = sfm_data.views.at(obs_it.first).get();
+      if (!sfm_data.IsPoseAndIntrinsicDefined(view))
+        continue;
+      const IntrinsicBase & cam =  *sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
       const Pose3 pose = sfm_data.GetPoseOrDie(view);
-      const Vec2 residual = intrinsic->residual(pose, current_model, itObs->second.x);
-      const double residual_d = residual.squaredNorm();
-      if (residual_d < dSquared_pixel_threshold)
+      if (!CheiralityTest(cam(obs_it.second.x), pose, X))
+        continue;
+      const double residual_sq = cam.residual(pose(X), obs_it.second.x).squaredNorm();
+      if (residual_sq < dSquared_pixel_threshold)
       {
-        inlier_set.push_front(itObs->first);
-        current_error += residual_d;
+        inlier_set.push_front(obs_it.first);
+        current_error += residual_sq;
       }
       else
       {
         current_error += dSquared_pixel_threshold;
       }
     }
-    // Does the hypothesis is the best one we have seen and have sufficient inliers.
-    if (current_error < best_error && inlier_set.size() >= min_required_inliers)
+    // Does the hypothesis:
+    // - is the best one we have seen so far.
+    // - has sufficient inliers.
+    if (current_error < best_error &&
+      inlier_set.size() >= min_required_inliers_)
     {
-      best_model = current_model;
+      best_model = X;
       best_inlier_set = inlier_set;
       best_error = current_error;
     }
   }
-  if (!best_inlier_set.empty())
+  if (!best_inlier_set.empty() && best_inlier_set.size() >= min_required_inliers_)
   {
     // Update information (3D landmark position & valid observations)
     landmark.X = best_model;
@@ -296,29 +412,6 @@ const
     }
   }
   return !best_inlier_set.empty();
-}
-
-
-/// Triangulate a given track from a selection of observations
-Vec3 SfM_Data_Structure_Computation_Robust::track_sample_triangulation(
-  const SfM_Data & sfm_data,
-  const Observations & obs,
-  const std::set<IndexT> & samples) const
-{
-  Triangulation trianObj;
-  for (auto& it : samples)
-  {
-    const IndexT & idx = it;
-    Observations::const_iterator itObs = obs.begin();
-    std::advance(itObs, idx);
-    const View * view = sfm_data.views.at(itObs->first).get();
-    const IntrinsicBase * cam = sfm_data.GetIntrinsics().at(view->id_intrinsic).get();
-    const Pose3 pose = sfm_data.GetPoseOrDie(view);
-    trianObj.add(
-      cam->get_projective_equivalent(pose),
-      cam->get_ud_pixel(itObs->second.x));
-  }
-  return trianObj.compute();
 }
 
 } // namespace sfm

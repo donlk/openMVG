@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,15 +9,16 @@
 #ifndef OPENMVG_SFM_PIPELINES_TEST_HPP
 #define OPENMVG_SFM_PIPELINES_TEST_HPP
 
+#include <iostream>
+#include <random>
+#include <vector>
+
 #include "openMVG/multiview/test_data_sets.hpp"
 #include "openMVG/sfm/sfm.hpp"
 
-#include <iostream>
-#include <random>
-
 using namespace openMVG;
 using namespace openMVG::sfm;
-
+using namespace openMVG::matching;
 
 // Create from a synthetic scene (NViewDataSet) some SfM pipelines data provider:
 //  - for each view store the observations point as PointFeatures
@@ -34,8 +36,8 @@ struct Synthetic_Features_Provider : public Features_Provider
       for (Mat2X::Index i = 0; i < synthetic_data._x[j].cols(); ++i)
       {
         const Vec2 pt = synthetic_data._x[j].col(i);
-        feats_per_view[j].push_back(
-          features::PointFeature(pt(0)+noise(generator), pt(1)+noise(generator)));
+        feats_per_view[j].emplace_back(pt(0) + noise(generator),
+                                       pt(1) + noise(generator));
       }
     }
     return true;
@@ -54,7 +56,7 @@ struct Synthetic_Matches_Provider : public Matches_Provider
     // For each view
     for (IndexT j = 0; j < synthetic_data._n; ++j)
     {
-      for (IndexT jj = j+1; jj < j+3 ; ++jj)
+      for (IndexT jj = j+1; jj < j+3; ++jj)
       {
         for (Mat2X::Index idx = 0; idx < synthetic_data._x[j].cols(); ++idx)
         {
@@ -71,18 +73,18 @@ static double RMSE(const SfM_Data & sfm_data)
 {
   // Compute residuals for each observation
   std::vector<double> vec;
-  for(Landmarks::const_iterator iterTracks = sfm_data.GetLandmarks().begin();
+  for (Landmarks::const_iterator iterTracks = sfm_data.GetLandmarks().begin();
       iterTracks != sfm_data.GetLandmarks().end();
       ++iterTracks)
   {
     const Observations & obs = iterTracks->second.obs;
-    for(Observations::const_iterator itObs = obs.begin();
+    for (Observations::const_iterator itObs = obs.begin();
       itObs != obs.end(); ++itObs)
     {
       const View * view = sfm_data.GetViews().find(itObs->first)->second.get();
       const geometry::Pose3 pose = sfm_data.GetPoseOrDie(view);
       const std::shared_ptr<cameras::IntrinsicBase> intrinsic = sfm_data.GetIntrinsics().at(view->id_intrinsic);
-      const Vec2 residual = intrinsic->residual(pose, iterTracks->second.X, itObs->second.x);
+      const Vec2 residual = intrinsic->residual(pose(iterTracks->second.X), itObs->second.x);
       //std::cout << residual << " ";
       vec.push_back( residual(0) );
       vec.push_back( residual(1) );

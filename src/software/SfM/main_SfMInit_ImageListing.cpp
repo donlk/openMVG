@@ -1,28 +1,32 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013, 2015 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
-#include "openMVG/exif/exif_IO_EasyExif.hpp"
 
+#include "openMVG/cameras/cameras.hpp"
+#include "openMVG/exif/exif_IO_EasyExif.hpp"
 #include "openMVG/exif/sensor_width_database/ParseDatabase.hpp"
-#include "openMVG/exif/exif_IO_EasyExif.hpp"
 #include "openMVG/geodesy/geodesy.hpp"
-
-#include "openMVG/image/image.hpp"
-#include "openMVG/stl/split.hpp"
-
-#include "openMVG/sfm/sfm.hpp"
+#include "openMVG/image/image_io.hpp"
+#include "openMVG/numeric/eigen_alias_definition.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_io.hpp"
+#include "openMVG/sfm/sfm_data_utils.hpp"
+#include "openMVG/sfm/sfm_view.hpp"
+#include "openMVG/sfm/sfm_view_priors.hpp"
+#include "openMVG/types.hpp"
 
 #include "third_party/cmdLine/cmdLine.h"
+#include "third_party/progress/progress_display.hpp"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 
-#include <iostream>
 #include <fstream>
-#include <sstream>
 #include <memory>
 #include <string>
-#include <vector>
+#include <utility>
 
 using namespace openMVG;
 using namespace openMVG::cameras;
@@ -78,7 +82,7 @@ std::pair<bool, Vec3> checkGPS
       {
         // Add ECEF or UTM XYZ position to the GPS position array
         val.first = true;
-        switch(GPS_to_XYZ_method)
+        switch (GPS_to_XYZ_method)
         {
           case 1:
             val.second = lla_to_utm( latitude, longitude, altitude );
@@ -155,13 +159,13 @@ int main(int argc, char **argv)
   cmd.add( make_option('c', i_User_camera_model, "camera_model") );
   cmd.add( make_option('g', b_Group_camera_model, "group_camera_model") );
   cmd.add( make_switch('P', "use_pose_prior") );
-  cmd.add( make_option('W', sPriorWeights, "prior_weigths"));
+  cmd.add( make_option('W', sPriorWeights, "prior_weights"));
   cmd.add( make_option('m', i_GPS_XYZ_method, "gps_to_xyz_method") );
 
   try {
       if (argc == 1) throw std::string("Invalid command line parameter.");
       cmd.process(argc, argv);
-  } catch(const std::string& s) {
+  } catch (const std::string& s) {
       std::cerr << "Usage: " << argv[0] << '\n'
       << "[-i|--imageDirectory]\n"
       << "[-d|--sensorWidthDatabase]\n"
@@ -169,17 +173,18 @@ int main(int argc, char **argv)
       << "[-f|--focal] (pixels)\n"
       << "[-k|--intrinsics] Kmatrix: \"f;0;ppx;0;f;ppy;0;0;1\"\n"
       << "[-c|--camera_model] Camera model type:\n"
-      << "\t 1: Pinhole\n"
-      << "\t 2: Pinhole radial 1\n"
-      << "\t 3: Pinhole radial 3 (default)\n"
-      << "\t 4: Pinhole brown 2\n"
-      << "\t 5: Pinhole with a simple Fish-eye distortion\n"
+      << "\t" << static_cast<int>(PINHOLE_CAMERA) << ": Pinhole\n"
+      << "\t" << static_cast<int>(PINHOLE_CAMERA_RADIAL1) << ": Pinhole radial 1\n"
+      << "\t" << static_cast<int>(PINHOLE_CAMERA_RADIAL3) << ": Pinhole radial 3 (default)\n"
+      << "\t" << static_cast<int>(PINHOLE_CAMERA_BROWN) << ": Pinhole brown 2\n"
+      << "\t" << static_cast<int>(PINHOLE_CAMERA_FISHEYE) << ": Pinhole with a simple Fish-eye distortion\n"
+      << "\t" << static_cast<int>(CAMERA_SPHERICAL) << ": Spherical camera\n"
       << "[-g|--group_camera_model]\n"
       << "\t 0-> each view have it's own camera intrinsic parameters,\n"
       << "\t 1-> (default) view can share some camera intrinsic parameters\n"
       << "\n"
       << "[-P|--use_pose_prior] Use pose prior if GPS EXIF pose is available"
-      << "[-W|--prior_weigths] \"x;y;z;\" of weights for each dimension of the prior (default: 1.0)\n"
+      << "[-W|--prior_weights] \"x;y;z;\" of weights for each dimension of the prior (default: 1.0)\n"
       << "[-m|--gps_to_xyz_method] XZY Coordinate system:\n"
       << "\t 0: ECEF (default)\n"
       << "\t 1: UTM\n"
@@ -290,7 +295,7 @@ int main(int argc, char **argv)
       continue; // image cannot be opened
     }
 
-    if(sImFilenamePart.find("mask.png") != std::string::npos
+    if (sImFilenamePart.find("mask.png") != std::string::npos
        || sImFilenamePart.find("_mask.png") != std::string::npos)
     {
       error_report_stream
@@ -307,63 +312,65 @@ int main(int argc, char **argv)
     ppx = width / 2.0;
     ppy = height / 2.0;
 
-    std::unique_ptr<Exif_IO> exifReader(new Exif_IO_EasyExif);
-    exifReader->open( sImageFilename );
-
-    const bool bHaveValidExifMetadata =
-      exifReader->doesHaveExifInfo()
-      && !exifReader->getModel().empty();
 
     // Consider the case where the focal is provided manually
-    if ( !bHaveValidExifMetadata || focal_pixels != -1)
+    if (sKmatrix.size() > 0) // Known user calibration K matrix
     {
-      if (sKmatrix.size() > 0) // Known user calibration K matrix
-      {
-        if (!checkIntrinsicStringValidity(sKmatrix, focal, ppx, ppy))
-          focal = -1.0;
-      }
-      else // User provided focal length value
-        if (focal_pixels != -1 )
-          focal = focal_pixels;
-    }
-    else // If image contains meta data
-    {
-      const std::string sCamModel = exifReader->getModel();
-
-      // Handle case where focal length is equal to 0
-      if (exifReader->getFocal() == 0.0f)
-      {
-        error_report_stream
-          << stlplus::basename_part(sImageFilename) << ": Focal length is missing." << "\n";
+      if (!checkIntrinsicStringValidity(sKmatrix, focal, ppx, ppy))
         focal = -1.0;
-      }
-      else
-      // Create the image entry in the list file
+    }
+    else // User provided focal length value
+      if (focal_pixels != -1 )
+        focal = focal_pixels;
+
+    // If not manually provided or wrongly provided
+    if (focal == -1)
+    {
+      std::unique_ptr<Exif_IO> exifReader(new Exif_IO_EasyExif);
+      exifReader->open( sImageFilename );
+
+      const bool bHaveValidExifMetadata =
+        exifReader->doesHaveExifInfo()
+        && !exifReader->getModel().empty();
+
+      if (bHaveValidExifMetadata) // If image contains meta data
       {
-        Datasheet datasheet;
-        if ( getInfo( sCamModel, vec_database, datasheet ))
-        {
-          // The camera model was found in the database so we can compute it's approximated focal length
-          const double ccdw = datasheet.sensorSize_;
-          focal = std::max ( width, height ) * exifReader->getFocal() / ccdw;
-        }
-        else
+        const std::string sCamModel = exifReader->getModel();
+
+        // Handle case where focal length is equal to 0
+        if (exifReader->getFocal() == 0.0f)
         {
           error_report_stream
-            << stlplus::basename_part(sImageFilename)
-            << "\" model \"" << sCamModel << "\" doesn't exist in the database" << "\n"
-            << "Please consider add your camera model and sensor width in the database." << "\n";
+            << stlplus::basename_part(sImageFilename) << ": Focal length is missing." << "\n";
+          focal = -1.0;
+        }
+        else
+        // Create the image entry in the list file
+        {
+          Datasheet datasheet;
+          if ( getInfo( sCamModel, vec_database, datasheet ))
+          {
+            // The camera model was found in the database so we can compute it's approximated focal length
+            const double ccdw = datasheet.sensorSize_;
+            focal = std::max ( width, height ) * exifReader->getFocal() / ccdw;
+          }
+          else
+          {
+            error_report_stream
+              << stlplus::basename_part(sImageFilename)
+              << "\" model \"" << sCamModel << "\" doesn't exist in the database" << "\n"
+              << "Please consider add your camera model and sensor width in the database." << "\n";
+          }
         }
       }
     }
-
     // Build intrinsic parameter related to the view
-    std::shared_ptr<IntrinsicBase> intrinsic (NULL);
+    std::shared_ptr<IntrinsicBase> intrinsic;
 
     if (focal > 0 && ppx > 0 && ppy > 0 && width > 0 && height > 0)
     {
       // Create the desired camera type
-      switch(e_User_camera_model)
+      switch (e_User_camera_model)
       {
         case PINHOLE_CAMERA:
           intrinsic = std::make_shared<Pinhole_Intrinsic>
@@ -378,12 +385,16 @@ int main(int argc, char **argv)
             (width, height, focal, ppx, ppy, 0.0, 0.0, 0.0);  // setup no distortion as initial guess
         break;
         case PINHOLE_CAMERA_BROWN:
-          intrinsic =std::make_shared<Pinhole_Intrinsic_Brown_T2>
+          intrinsic = std::make_shared<Pinhole_Intrinsic_Brown_T2>
             (width, height, focal, ppx, ppy, 0.0, 0.0, 0.0, 0.0, 0.0); // setup no distortion as initial guess
         break;
         case PINHOLE_CAMERA_FISHEYE:
-          intrinsic =std::make_shared<Pinhole_Intrinsic_Fisheye>
+          intrinsic = std::make_shared<Pinhole_Intrinsic_Fisheye>
             (width, height, focal, ppx, ppy, 0.0, 0.0, 0.0, 0.0); // setup no distortion as initial guess
+        break;
+        case CAMERA_SPHERICAL:
+           intrinsic = std::make_shared<Intrinsic_Spherical>
+             (width, height);
         break;
         default:
           std::cerr << "Error: unknown camera model: " << (int) e_User_camera_model << std::endl;
@@ -398,7 +409,7 @@ int main(int argc, char **argv)
       ViewPriors v(*iter_image, views.size(), views.size(), views.size(), width, height);
 
       // Add intrinsic related to the image (if any)
-      if (intrinsic == NULL)
+      if (intrinsic == nullptr)
       {
         //Since the view have invalid intrinsic data
         // (export the view, with an invalid intrinsic field value)
@@ -426,7 +437,7 @@ int main(int argc, char **argv)
       View v(*iter_image, views.size(), views.size(), views.size(), width, height);
 
       // Add intrinsic related to the image (if any)
-      if (intrinsic == NULL)
+      if (intrinsic == nullptr)
       {
         //Since the view have invalid intrinsic data
         // (export the view, with an invalid intrinsic field value)

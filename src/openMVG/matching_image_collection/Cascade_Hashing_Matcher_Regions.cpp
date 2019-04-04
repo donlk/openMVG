@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -5,13 +6,15 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/matching/indMatchDecoratorXY.hpp"
-#include "openMVG/matching/matcher_cascade_hashing.hpp"
-#include "openMVG/matching/matching_filters.hpp"
 #include "openMVG/matching_image_collection/Cascade_Hashing_Matcher_Regions.hpp"
-#include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
 
-#include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
+#include "openMVG/matching/cascade_hasher.hpp"
+#include "openMVG/features/feature.hpp"
+#include "openMVG/matching/matching_filters.hpp"
+#include "openMVG/matching/indMatchDecoratorXY.hpp"
+#include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
+#include "openMVG/types.hpp"
+
 #include "third_party/progress/progress.hpp"
 
 namespace openMVG {
@@ -33,11 +36,11 @@ namespace impl
 template <typename ScalarT>
 void Match
 (
-  const sfm::SfM_Data & sfm_data,
   const sfm::Regions_Provider & regions_provider,
   const Pair_Set & pairs,
   float fDistRatio,
-  PairWiseMatchesContainer & map_PutativesMatches // the pairwise photometric corresponding points
+  PairWiseMatchesContainer & map_PutativesMatches, // the pairwise photometric corresponding points
+  C_Progress * my_progress_bar
 )
 {
 
@@ -46,11 +49,11 @@ void Match
   // Sort pairs according the first index to minimize later memory swapping
   using Map_vectorT = std::map<IndexT, std::vector<IndexT>>;
   Map_vectorT map_Pairs;
-  for (Pair_Set::const_iterator iter = pairs.begin(); iter != pairs.end(); ++iter)
+  for (const auto & pair_idx : pairs)
   {
-    map_Pairs[iter->first].push_back(iter->second);
-    used_index.insert(iter->first);
-    used_index.insert(iter->second);
+    map_Pairs[pair_idx.first].push_back(pair_idx.second);
+    used_index.insert(pair_idx.first);
+    used_index.insert(pair_idx.second);
   }
 
   using BaseMat = Eigen::Matrix<ScalarT, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
@@ -60,8 +63,8 @@ void Match
   if (!used_index.empty())
   {
     const IndexT I = *used_index.begin();
-    std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
-    const size_t dimension = regionsI.get()->DescriptorLength();
+    const std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
+    const size_t dimension = regionsI->DescriptorLength();
     cascade_hasher.Init(dimension);
   }
 
@@ -76,18 +79,18 @@ void Match
       std::set<IndexT>::const_iterator iter = used_index.begin();
       std::advance(iter, i);
       const IndexT I = *iter;
-      std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
+      const std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
       const ScalarT * tabI =
-        reinterpret_cast<const ScalarT*>(regionsI.get()->DescriptorRawData());
-      const size_t dimension = regionsI.get()->DescriptorLength();
+        reinterpret_cast<const ScalarT*>(regionsI->DescriptorRawData());
+      const size_t dimension = regionsI->DescriptorLength();
       if (i==0)
       {
         matForZeroMean.resize(used_index.size(), dimension);
         matForZeroMean.fill(0.0f);
       }
-      if (regionsI.get()->RegionCount() > 0)
+      if (regionsI->RegionCount() > 0)
       {
-        Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI.get()->RegionCount(), dimension);
+        Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI->RegionCount(), dimension);
         matForZeroMean.row(i) = CascadeHasher::GetZeroMeanDescriptor(mat_I);
       }
     }
@@ -103,12 +106,12 @@ void Match
     std::set<IndexT>::const_iterator iter = used_index.begin();
     std::advance(iter, i);
     const IndexT I = *iter;
-    std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
+    const std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
     const ScalarT * tabI =
-      reinterpret_cast<const ScalarT*>(regionsI.get()->DescriptorRawData());
-    const size_t dimension = regionsI.get()->DescriptorLength();
+      reinterpret_cast<const ScalarT*>(regionsI->DescriptorRawData());
+    const size_t dimension = regionsI->DescriptorLength();
 
-    Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI.get()->RegionCount(), dimension);
+    Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI->RegionCount(), dimension);
 #ifdef OPENMVG_USE_OPENMP
     #pragma omp critical
 #endif
@@ -119,46 +122,47 @@ void Match
   }
 
   // Perform matching between all the pairs
-  for (Map_vectorT::const_iterator iter = map_Pairs.begin();
-    iter != map_Pairs.end(); ++iter)
+  for (const auto & pairs : map_Pairs)
   {
-    const IndexT I = iter->first;
-    const std::vector<IndexT> & indexToCompare = iter->second;
+    if (my_progress_bar->hasBeenCanceled())
+      break;
+    const IndexT I = pairs.first;
+    const std::vector<IndexT> & indexToCompare = pairs.second;
 
-    std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
-    if (regionsI.get()->RegionCount() == 0)
+    const std::shared_ptr<features::Regions> regionsI = regions_provider.get(I);
+    if (regionsI->RegionCount() == 0)
     {
       continue;
     }
 
-    const std::vector<features::PointFeature> pointFeaturesI = regionsI.get()->GetRegionsPositions();
+    const std::vector<features::PointFeature> pointFeaturesI = regionsI->GetRegionsPositions();
     const ScalarT * tabI =
-      reinterpret_cast<const ScalarT*>(regionsI.get()->DescriptorRawData());
-    const size_t dimension = regionsI.get()->DescriptorLength();
-    Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI.get()->RegionCount(), dimension);
+      reinterpret_cast<const ScalarT*>(regionsI->DescriptorRawData());
+    const size_t dimension = regionsI->DescriptorLength();
+    Eigen::Map<BaseMat> mat_I( (ScalarT*)tabI, regionsI->RegionCount(), dimension);
 
 #ifdef OPENMVG_USE_OPENMP
     #pragma omp parallel for schedule(dynamic)
 #endif
     for (int j = 0; j < (int)indexToCompare.size(); ++j)
     {
-      const size_t J = indexToCompare[j];
-      std::shared_ptr<features::Regions> regionsJ = regions_provider.get(J);
-
-      if (regionsI.get()->Type_id() != regionsJ.get()->Type_id())
-      {
+      if (my_progress_bar->hasBeenCanceled())
         continue;
-      }
+      const size_t J = indexToCompare[j];
+      const std::shared_ptr<features::Regions> regionsJ = regions_provider.get(J);
+
+      if (regionsI->Type_id() != regionsJ->Type_id())
+        continue;
 
       // Matrix representation of the query input data;
-      const ScalarT * tabJ = reinterpret_cast<const ScalarT*>(regionsJ.get()->DescriptorRawData());
-      Eigen::Map<BaseMat> mat_J( (ScalarT*)tabJ, regionsJ.get()->RegionCount(), dimension);
+      const ScalarT * tabJ = reinterpret_cast<const ScalarT*>(regionsJ->DescriptorRawData());
+      Eigen::Map<BaseMat> mat_J( (ScalarT*)tabJ, regionsJ->RegionCount(), dimension);
 
       IndMatches pvec_indices;
       using ResultType = typename Accumulator<ScalarT>::Type;
       std::vector<ResultType> pvec_distances;
-      pvec_distances.reserve(regionsJ.get()->RegionCount() * 2);
-      pvec_indices.reserve(regionsJ.get()->RegionCount() * 2);
+      pvec_distances.reserve(regionsJ->RegionCount() * 2);
+      pvec_indices.reserve(regionsJ->RegionCount() * 2);
 
       // Match the query descriptors to the database
       cascade_hasher.Match_HashedDescriptions<BaseMat, ResultType>(
@@ -190,7 +194,7 @@ void Match
       matching::IndMatch::getDeduplicated(vec_putative_matches);
 
       // Remove matches that have the same (X,Y) coordinates
-      const std::vector<features::PointFeature> pointFeaturesJ = regionsJ.get()->GetRegionsPositions();
+      const std::vector<features::PointFeature> pointFeaturesJ = regionsJ->GetRegionsPositions();
       matching::IndMatchDecorator<float> matchDeduplicator(vec_putative_matches,
         pointFeaturesI, pointFeaturesJ);
       matchDeduplicator.getDeduplicated(vec_putative_matches);
@@ -203,10 +207,10 @@ void Match
         if (!vec_putative_matches.empty())
         {
           map_PutativesMatches.insert(
-            std::make_pair(
-              std::make_pair(I,J),
+            {
+              {I,J},
               std::move(vec_putative_matches)
-            ));
+            });
         }
       }
     }
@@ -216,10 +220,10 @@ void Match
 
 void Cascade_Hashing_Matcher_Regions::Match
 (
-  const sfm::SfM_Data & sfm_data,
   const std::shared_ptr<sfm::Regions_Provider> & regions_provider,
   const Pair_Set & pairs,
-  PairWiseMatchesContainer & map_PutativesMatches // the pairwise photometric corresponding points
+  PairWiseMatchesContainer & map_PutativesMatches, // the pairwise photometric corresponding points
+  C_Progress * my_progress_bar
 )const
 {
 #ifdef OPENMVG_USE_OPENMP
@@ -234,21 +238,21 @@ void Cascade_Hashing_Matcher_Regions::Match
   if (regions_provider->Type_id() == typeid(unsigned char).name())
   {
     impl::Match<unsigned char>(
-      sfm_data,
       *regions_provider.get(),
       pairs,
       f_dist_ratio_,
-      map_PutativesMatches);
+      map_PutativesMatches,
+      my_progress_bar);
   }
   else
   if (regions_provider->Type_id() == typeid(float).name())
   {
     impl::Match<float>(
-      sfm_data,
       *regions_provider.get(),
       pairs,
       f_dist_ratio_,
-      map_PutativesMatches);
+      map_PutativesMatches,
+      my_progress_bar);
   }
   else
   {

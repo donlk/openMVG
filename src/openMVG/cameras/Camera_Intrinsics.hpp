@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,12 +9,12 @@
 #ifndef OPENMVG_CAMERAS_CAMERA_INTRINSICS_HPP
 #define OPENMVG_CAMERAS_CAMERA_INTRINSICS_HPP
 
+#include <vector>
+
 #include "openMVG/cameras/Camera_Common.hpp"
 #include "openMVG/geometry/pose3.hpp"
 #include "openMVG/numeric/numeric.h"
 #include "openMVG/stl/hash.hpp"
-
-#include <cereal/types/polymorphic.hpp>
 
 namespace openMVG
 {
@@ -23,11 +24,11 @@ namespace cameras
 /**
 * @brief Struct used to force "clonability"
 */
-template< typename T>
+template<typename T>
 struct Clonable
 {
-  virtual T * clone() const = 0 ;
-} ;
+  virtual T * clone() const = 0;
+};
 
 /**
 * @brief Base class used to store common intrinsics parameters
@@ -76,17 +77,15 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
 
   /**
   * @brief Compute projection of a 3D point into the image plane
-  * (Apply pose, disto (if any) and Intrinsics)
-  * @param pose Pose used to compute projection
-  * @param pt3D 3D-point to project on image plane
+  * (Apply disto (if any) and Intrinsics)
+  * @param X 3D-point to project on image plane
   * @return Projected (2D) point on image plane
   */
-  Vec2 project(
-    const geometry::Pose3 & pose,
-    const Vec3 & pt3D ) const
+  virtual Vec2 project(
+    const Vec3 & X,
+    const bool ignore_distortion = false) const
   {
-    const Vec3 X = pose( pt3D ); // apply pose
-    if ( this->have_disto() ) // apply disto & intrinsics
+    if ( this->have_disto() && !ignore_distortion) // apply disto & intrinsics
     {
       return this->cam2ima( this->add_disto( X.hnormalized() ) );
     }
@@ -98,17 +97,16 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
 
   /**
   * @brief Compute the residual between the 3D projected point and an image observation
-  * @param pose Pose used to project point on camera plane
   * @param X 3d point to project on camera plane
   * @param x image observation
   * @brief Relative 2d distance between projected and observed points
   */
   Vec2 residual(
-    const geometry::Pose3 & pose,
     const Vec3 & X,
-    const Vec2 & x ) const
+    const Vec2 & x,
+    const bool ignore_distortion = false) const
   {
-    const Vec2 proj = this->project( pose, X );
+    const Vec2 proj = this->project(X, ignore_distortion );
     return x - proj;
   }
 
@@ -144,10 +142,10 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
     const Intrinsic_Parameter_Type & parametrization) const = 0;
 
   /**
-  * @brief Get bearing vector of a point given an image coordinate
-  * @return bearing vector
+  * @brief Get bearing vectors from image coordinates
+  * @return bearing vectors
   */
-  virtual Vec3 operator () ( const Vec2& p ) const = 0;
+  virtual Mat3X operator () ( const Mat2X& p ) const = 0;
 
   /**
   * @brief Transform a point from the camera plane to the image plane
@@ -220,22 +218,15 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
   * @param ar Archive
   */
   template <class Archive>
-  void save( Archive & ar ) const
-  {
-    ar( cereal::make_nvp( "width", w_ ) );
-    ar( cereal::make_nvp( "height", h_ ) );
-  }
+  void save( Archive & ar ) const;
+
 
   /**
   * @brief  Serialization in
   * @param ar Archive
   */
   template <class Archive>
-  void load( Archive & ar )
-  {
-    ar( cereal::make_nvp( "width", w_ ) );
-    ar( cereal::make_nvp( "height", h_ ) );
-  }
+  void load( Archive & ar );
 
   /**
   * @brief Generate a unique Hash from the camera parameters (used for grouping)
@@ -268,12 +259,14 @@ struct IntrinsicBase : public Clonable<IntrinsicBase>
 *
 * @return Angle (in degree) between the two rays
 */
-inline double AngleBetweenRay(
+inline double AngleBetweenRay
+(
   const geometry::Pose3 & pose1,
   const IntrinsicBase * intrinsic1,
   const geometry::Pose3 & pose2,
   const IntrinsicBase * intrinsic2,
-  const Vec2 & x1, const Vec2 & x2 )
+  const Vec2 & x1, const Vec2 & x2
+)
 {
   // x = (u, v, 1.0)  // image coordinates
   // X = R.t() * K.inv() * x + C // Camera world point
@@ -281,9 +274,56 @@ inline double AngleBetweenRay(
   // ray = X - C = R.t() * K.inv() * x
   const Vec3 ray1 = ( pose1.rotation().transpose() * intrinsic1->operator()( x1 ) ).normalized();
   const Vec3 ray2 = ( pose2.rotation().transpose() * intrinsic2->operator()( x2 ) ).normalized();
-  const double mag = ray1.norm() * ray2.norm();
   const double dotAngle = ray1.dot( ray2 );
-  return R2D( acos( clamp( dotAngle / mag, -1.0 + 1.e-8, 1.0 - 1.e-8 ) ) );
+  return R2D( acos( clamp( dotAngle, -1.0 + 1.e-8, 1.0 - 1.e-8 ) ) );
+}
+
+/**
+* @brief Test if a 3d point is in the same direction as a bearing vector.
+*        This function is used to test if a point is in front of a camera.
+*
+* @param bearing Bearing vector: intrinsic(undistorted_feature_point_position)
+* @param pose Pose of the camera
+* @param X The 3d point
+*
+* @return True if the 3d point is visible ("facing front") of the cameras and
+* bearing vectors.
+*/
+inline bool CheiralityTest
+(
+  const Vec3 & bearing,
+  const geometry::Pose3 & pose,
+  const Vec3 & X
+)
+{
+  return bearing.dot(pose(X)) > 0.0;
+}
+
+/**
+* @brief Test if a 3d point is in "front" of two camera.
+*        This function test if a 3d point can be visible according two camera pose
+*        and two bearing vector.
+*
+* @param bearing1 Bearing vector of the first camera
+* @param pose1 Pose of the first camera
+* @param bearing2 Bearing vector of the second camera
+* @param pose2 Pose of the second camera
+* @param X The 3d point
+*
+* @return True if the 3d point is visible ("facing front") of the camera and
+* bearing vector.
+*/
+inline bool CheiralityTest
+(
+  const Vec3 & bearing1,
+  const geometry::Pose3 & pose1,
+  const Vec3 & bearing2,
+  const geometry::Pose3 & pose2,
+  const Vec3 & X
+)
+{
+  return CheiralityTest(bearing1, pose1, X)
+         && CheiralityTest(bearing2, pose2, X);
 }
 
 } // namespace cameras

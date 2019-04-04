@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -9,9 +11,7 @@
 
 #include "openMVG/multiview/projection.hpp"
 #include "openMVG/multiview/two_view_kernel.hpp"
-#include "openMVG/numeric/numeric.h"
-
-#include <vector>
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG {
 namespace lInfinityCV {

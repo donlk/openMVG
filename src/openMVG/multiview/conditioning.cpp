@@ -18,6 +18,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -25,6 +27,7 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/multiview/conditioning.hpp"
+#include "openMVG/numeric/numeric.h"
 
 namespace openMVG {
 
@@ -81,7 +84,7 @@ void NormalizePoints(const Mat &points,
   ApplyTransformationToPoints(points, *T, normalized_points);
 }
 
-// Denormalize the results. See HZ page 109.
+// Denormalize the results. See HZ page 282.
 void UnnormalizerT::Unnormalize(const Mat3 &T1, const Mat3 &T2, Mat3 *H)  {
   *H = T2.transpose() * (*H) * T1;
 }

@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,7 +9,7 @@
 #ifndef OPENMVG_IMAGE_IMAGE_CONTAINER_HPP
 #define OPENMVG_IMAGE_IMAGE_CONTAINER_HPP
 
-#include "openMVG/numeric/numeric.h"
+#include <Eigen/Dense>
 
 namespace openMVG
 {
@@ -15,13 +17,13 @@ namespace image
 {
 
 /**
-* @brief Generic image class
+* @brief Generic image class,
+* Image data are stored by inheritance of an Eigen matrix.
 * @tparam T Pixel type
 */
 template <typename T>
 class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
 {
-
   public:
 
     /// Pixel data type
@@ -60,7 +62,7 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     * @brief Copy constructor
     * @param I Source image
     */
-    inline Image( const Base& I )
+    explicit inline Image( const Base& I )
       : Base( I )
     {
 
@@ -70,7 +72,7 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     * @brief Move constructor
     * @param src Source image
     */
-    inline Image( Base && src )
+    explicit inline Image( Base && src )
       : Base( std::move( src ) )
     {
 
@@ -90,10 +92,7 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     /**
     * @brief destructor
     */
-    virtual inline ~Image() {};
-    //-- Image construction method
-    //------------------------------
-
+    virtual inline ~Image() = default;
 
     /**
     * @brief Change geometry of image
@@ -102,7 +101,7 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     * @param fInit Indicate if new image should be initialized
     * @param val if fInit is true all pixel in the new image are set to this value
     */
-    inline void resize( int width, int height, bool fInit = true, const T val = T( 0 ) )
+    inline void resize( int width, int height, bool fInit = true, const T val = T() )
     {
       Base::resize( height, width );
       if ( fInit )
@@ -214,8 +213,8 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     * @return pixelwise imgA + imgB
     * @note Images must have the same size
     */
-    template< typename T1>
-    friend Image<T1> operator+( const Image<T1> & imgA , const Image<T1> & imgB ) ;
+    template<typename T1>
+    friend Image<T1> operator+( const Image<T1> & imgA , const Image<T1> & imgB );
 
     /**
     * @brief Pixelwise subtraction of two images
@@ -224,12 +223,8 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
     * @return pixelwise imgA - imgB
     * @note Images must have the same size
     */
-    template< typename T1>
-    friend Image<T1> operator-( const Image<T1> & imgA , const Image<T1> & imgB ) ;
-
-
-  protected :
-    //-- Image data are stored by inheritance of a matrix
+  template<typename T1>
+    friend Image<T1> operator-( const Image<T1> & imgA , const Image<T1> & imgB );
 };
 
 /**
@@ -239,10 +234,10 @@ class Image : public Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic, Eigen::Row
 * @return pixelwise imgA + imgB
 * @note Images must have the same size
 */
-template< typename T1 >
+template<typename T1>
 Image<T1> operator+( const Image<T1> & imgA , const Image<T1> & imgB )
 {
-  return Image<T1>( imgA.Image<T1>::operator+( imgB ) ) ;
+  return Image<T1>( imgA.Image<T1>::operator+( imgB ) );
 }
 
 /**
@@ -252,10 +247,10 @@ Image<T1> operator+( const Image<T1> & imgA , const Image<T1> & imgB )
 * @return pixelwise imgA - imgB
 * @note Images must have the same size
 */
-template< typename T1>
+template<typename T1>
 Image<T1> operator-( const Image<T1> & imgA , const Image<T1> & imgB )
 {
-  return Image<T1>( imgA.Image<T1>::operator-( imgB ) ) ;
+  return Image<T1>( imgA.Image<T1>::operator-( imgB ) );
 }
 
 } // namespace image

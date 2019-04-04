@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,12 +9,12 @@
 #ifndef OPENMVG_CAMERAS_CAMERA_PINHOLE_HPP
 #define OPENMVG_CAMERAS_CAMERA_PINHOLE_HPP
 
+#include <vector>
+
 #include "openMVG/cameras/Camera_Common.hpp"
 #include "openMVG/cameras/Camera_Intrinsics.hpp"
 #include "openMVG/geometry/pose3.hpp"
-#include "openMVG/numeric/numeric.h"
-
-#include <vector>
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG
 {
@@ -80,7 +81,7 @@ class Pinhole_Intrinsic : public IntrinsicBase
     /**
     * @brief Destructor
     */
-    virtual ~Pinhole_Intrinsic() override = default;
+    ~Pinhole_Intrinsic() override = default;
 
     /**
     * @brief Get type of the intrinsic
@@ -125,18 +126,16 @@ class Pinhole_Intrinsic : public IntrinsicBase
     */
     inline Vec2 principal_point() const
     {
-      return Vec2( K_( 0, 2 ), K_( 1, 2 ) );
+      return {K_( 0, 2 ), K_( 1, 2 )};
     }
 
-
     /**
-    * @brief Get bearing vector of a point given an image coordinate
-    * @return bearing vector
+    * @brief Get bearing vectors from image coordinates
+    * @return bearing vectors
     */
-    Vec3 operator () ( const Vec2& p ) const override
+    Mat3X operator () ( const Mat2X& points ) const override
     {
-      Vec3 p3( p( 0 ), p( 1 ), 1.0 );
-      return ( Kinv_ * p3 ).normalized();
+      return Kinv_ * points.colwise().homogeneous();
     }
 
     /**
@@ -205,9 +204,7 @@ class Pinhole_Intrinsic : public IntrinsicBase
     */
     Mat34 get_projective_equivalent( const geometry::Pose3 & pose ) const override
     {
-      Mat34 P;
-      P_From_KRt( K(), pose.rotation(), pose.translation(), &P );
-      return P;
+      return K_ * (Mat34() << pose.rotation(), pose.translation()).finished();
     }
 
 
@@ -253,13 +250,12 @@ class Pinhole_Intrinsic : public IntrinsicBase
       if ( !(param & (int)Intrinsic_Parameter_Type::ADJUST_FOCAL_LENGTH)
            || param & (int)Intrinsic_Parameter_Type::NONE )
       {
-        constant_index.push_back(0);
+        constant_index.insert(constant_index.end(), 0);
       }
       if ( !(param & (int)Intrinsic_Parameter_Type::ADJUST_PRINCIPAL_POINT)
           || param & (int)Intrinsic_Parameter_Type::NONE )
       {
-        constant_index.push_back(1);
-        constant_index.push_back(2);
+        constant_index.insert(constant_index.end(), {1, 2});
       }
       return constant_index;
     }
@@ -289,13 +285,7 @@ class Pinhole_Intrinsic : public IntrinsicBase
     * @param ar Archive
     */
     template <class Archive>
-    void save( Archive & ar ) const
-    {
-      IntrinsicBase::save(ar);
-      ar( cereal::make_nvp( "focal_length", K_( 0, 0 ) ) );
-      const std::vector<double> pp = {K_( 0, 2 ), K_( 1, 2 )};
-      ar( cereal::make_nvp( "principal_point", pp ) );
-    }
+    inline void save( Archive & ar ) const;
 
 
     /**
@@ -303,15 +293,7 @@ class Pinhole_Intrinsic : public IntrinsicBase
     * @param ar Archive
     */
     template <class Archive>
-    void load( Archive & ar )
-    {
-      IntrinsicBase::load(ar);
-      double focal_length;
-      ar( cereal::make_nvp( "focal_length", focal_length ) );
-      std::vector<double> pp( 2 );
-      ar( cereal::make_nvp( "principal_point", pp ) );
-      *this = Pinhole_Intrinsic( w_, h_, focal_length, pp[0], pp[1] );
-    }
+    inline void load( Archive & ar );
 
     /**
     * @brief Clone the object
@@ -325,9 +307,5 @@ class Pinhole_Intrinsic : public IntrinsicBase
 
 } // namespace cameras
 } // namespace openMVG
-
-#include <cereal/types/polymorphic.hpp>
-CEREAL_REGISTER_TYPE_WITH_NAME(openMVG::cameras::Pinhole_Intrinsic, "pinhole");
-CEREAL_REGISTER_POLYMORPHIC_RELATION(openMVG::cameras::IntrinsicBase, openMVG::cameras::Pinhole_Intrinsic);
 
 #endif // #ifndef OPENMVG_CAMERAS_CAMERA_PINHOLE_HPP

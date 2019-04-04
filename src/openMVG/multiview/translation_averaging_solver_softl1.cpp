@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -7,8 +8,12 @@
 
 #include "openMVG/multiview/translation_averaging_common.hpp"
 #include "openMVG/multiview/translation_averaging_solver.hpp"
-#include "openMVG/numeric/numeric.h"
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 #include "openMVG/types.hpp"
+
+#ifdef OPENMVG_USE_OPENMP
+#include <omp.h>
+#endif
 
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
@@ -60,7 +65,7 @@ struct RelativeTranslationError
 // Cost penalizing scales smaller than 1.
 struct SmallScaleError
 {
-  SmallScaleError
+  explicit SmallScaleError
   (
     double weight = 1.0
   )
@@ -83,7 +88,7 @@ struct SmallScaleError
 
 bool solve_translations_problem_softl1
 (
-  const std::vector< openMVG::RelativeInfo_Vec > & vec_relative_group_estimates,
+  const std::vector<openMVG::RelativeInfo_Vec > & vec_relative_group_estimates,
   std::vector<Eigen::Vector3d> & translations,
   const double d_l1_loss_threshold
 )
@@ -208,7 +213,9 @@ bool solve_translations_problem_softl1
   options.logging_type = ceres::SILENT;
 #ifdef OPENMVG_USE_OPENMP
   options.num_threads = omp_get_max_threads();
+#if CERES_VERSION_MAJOR < 2
   options.num_linear_solver_threads = omp_get_max_threads();
+#endif
 #endif // OPENMVG_USE_OPENMP
   ceres::Solver::Summary summary;
   ceres::Solve(options, &problem, &summary);

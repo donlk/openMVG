@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -7,10 +8,16 @@
 
 #include "openMVG/sfm/pipelines/global/GlobalSfM_translation_averaging.hpp"
 
+#ifdef OPENMVG_USE_OPENMP
+#include <omp.h>
+#endif
+
 #include "openMVG/graph/graph.hpp"
+#include "openMVG/types.hpp"
+#include "openMVG/cameras/Camera_Intrinsics.hpp"
+#include "openMVG/cameras/Camera_Pinhole.hpp"
 #include "openMVG/linearProgramming/linearProgramming.hpp"
 #include "openMVG/multiview/essential.hpp"
-#include "openMVG/multiview/conditioning.hpp"
 #include "openMVG/multiview/translation_averaging_common.hpp"
 #include "openMVG/multiview/translation_averaging_solver.hpp"
 #include "openMVG/robust_estimation/robust_estimator_ACRansac.hpp"
@@ -20,21 +27,18 @@
 #include "openMVG/sfm/pipelines/sfm_features_provider.hpp"
 #include "openMVG/sfm/pipelines/sfm_matches_provider.hpp"
 #include "openMVG/sfm/sfm_data_io.hpp"
-#include "openMVG/sfm/sfm_data_BA_ceres.hpp"
-#include "openMVG/sfm/sfm_data_triangulation.hpp"
 #include "openMVG/sfm/sfm_filters.hpp"
 #include "openMVG/stl/stl.hpp"
 #include "openMVG/system/timer.hpp"
 
-#include "third_party/histogram/histogram.hpp"
-#include "third_party/progress/progress.hpp"
-#include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
+#include <vector>
 
 namespace openMVG{
 namespace sfm{
 
 using namespace openMVG::cameras;
 using namespace openMVG::geometry;
+using namespace openMVG::matching;
 
 /// Use features in normalized camera frames
 bool GlobalSfM_Translation_AveragingSolver::Run
@@ -124,7 +128,7 @@ bool GlobalSfM_Translation_AveragingSolver::Translation_averaging(
 
     openMVG::system::Timer timerLP_translation;
 
-    switch(eTranslationAveragingMethod)
+    switch (eTranslationAveragingMethod)
     {
       case TRANSLATION_AVERAGING_L1:
       {
@@ -253,7 +257,7 @@ bool GlobalSfM_Translation_AveragingSolver::Translation_averaging(
         const double loss_width = 0.0; // No loss in order to compare with TRANSLATION_AVERAGING_L1
 
         std::vector<double> X(iNview*3, 0.0);
-        if(!solve_translations_problem_l2_chordal(
+        if (!solve_translations_problem_l2_chordal(
           &vec_edges[0],
           &vec_poses[0],
           &vec_weights[0],
@@ -334,7 +338,7 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
   //
   Pair_Set rotation_pose_id_graph;
   std::set<IndexT> set_pose_ids;
-  std::transform(map_globalR.begin(), map_globalR.end(),
+  std::transform(map_globalR.cbegin(), map_globalR.cend(),
     std::inserter(set_pose_ids, set_pose_ids.begin()), stl::RetrieveKey());
   // List shared correspondences (pairs) between poses
   for (const auto & match_iterator : matches_provider->pairWise_matches_)
@@ -348,13 +352,12 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
         && set_pose_ids.count(v1->id_pose)
         && set_pose_ids.count(v2->id_pose))
     {
-      rotation_pose_id_graph.insert(
-        std::make_pair(v1->id_pose, v2->id_pose));
+      rotation_pose_id_graph.insert({v1->id_pose, v2->id_pose});
     }
   }
   // List putative triplets (from global rotations Ids)
-  const std::vector< graph::Triplet > vec_triplets =
-    graph::tripletListing(rotation_pose_id_graph);
+  const std::vector<graph::Triplet> vec_triplets =
+    graph::TripletListing(rotation_pose_id_graph);
   std::cout << "#Triplets: " << vec_triplets.size() << std::endl;
 
   {
@@ -368,9 +371,9 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
     for (size_t i = 0; i < vec_triplets.size(); ++i)
     {
       const graph::Triplet & triplet = vec_triplets[i];
-      map_tripletIds_perEdge[std::make_pair(triplet.i, triplet.j)].push_back(i);
-      map_tripletIds_perEdge[std::make_pair(triplet.i, triplet.k)].push_back(i);
-      map_tripletIds_perEdge[std::make_pair(triplet.j, triplet.k)].push_back(i);
+      map_tripletIds_perEdge[{triplet.i, triplet.j}].push_back(i);
+      map_tripletIds_perEdge[{triplet.i, triplet.k}].push_back(i);
+      map_tripletIds_perEdge[{triplet.j, triplet.k}].push_back(i);
     }
 
     //-- precompute the visibility count per triplets (sum of their 2 view matches)
@@ -399,7 +402,10 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
     }
     // Collect edges that are covered by the triplets
     std::vector<myEdge> vec_edges;
-    std::transform(map_tripletIds_perEdge.begin(), map_tripletIds_perEdge.end(), std::back_inserter(vec_edges), stl::RetrieveKey());
+    std::transform(map_tripletIds_perEdge.cbegin(),
+                   map_tripletIds_perEdge.cend(),
+                   std::back_inserter(vec_edges),
+                   stl::RetrieveKey());
 
     openMVG::sfm::MutexSet<myEdge> m_mutexSet;
 
@@ -409,9 +415,9 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
       "\nRelative translations computation (edge coverage algorithm)\n");
 
 #  ifdef OPENMVG_USE_OPENMP
-    std::vector< std::vector<RelativeInfo_Vec> > initial_estimates(omp_get_max_threads());
+    std::vector<std::vector<RelativeInfo_Vec>> initial_estimates(omp_get_max_threads());
 #  else
-    std::vector< std::vector<RelativeInfo_Vec> > initial_estimates(1);
+    std::vector<std::vector<RelativeInfo_Vec>> initial_estimates(1);
 #  endif
 
     #ifdef OPENMVG_USE_OPENMP
@@ -420,12 +426,8 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
     for (int k = 0; k < static_cast<int>(vec_edges.size()); ++k)
     {
       const myEdge & edge = vec_edges[k];
-      #ifdef OPENMVG_USE_OPENMP
-        #pragma omp critical
-      #endif
-      {
-        ++my_progress_bar;
-      }
+      ++my_progress_bar;
+
       if (m_mutexSet.count(edge) == 0 && m_mutexSet.size() != vec_edges.size())
       {
         // Find the triplets that are supporting the given edge
@@ -490,9 +492,9 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
               #pragma omp critical
             #endif
             {
-              m_mutexSet.insert(std::make_pair(triplet.i, triplet.j));
-              m_mutexSet.insert(std::make_pair(triplet.j, triplet.k));
-              m_mutexSet.insert(std::make_pair(triplet.i, triplet.k));
+              m_mutexSet.insert({triplet.i, triplet.j});
+              m_mutexSet.insert({triplet.j, triplet.k});
+              m_mutexSet.insert({triplet.i, triplet.k});
             }
 
             // Compute the triplet relative motions (IJ, JK, IK)
@@ -525,12 +527,12 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
               #endif
 
               RelativeInfo_Vec triplet_relative_motion;
-              triplet_relative_motion.emplace_back(
-                std::make_pair(triplet.i, triplet.j), std::make_pair(Rij, tij));
-              triplet_relative_motion.emplace_back(
-                std::make_pair(triplet.j, triplet.k), std::make_pair(Rjk, tjk));
-              triplet_relative_motion.emplace_back(
-                std::make_pair(triplet.i, triplet.k), std::make_pair(Rik, tik));
+              triplet_relative_motion.push_back(
+                {{triplet.i, triplet.j}, {Rij, tij}});
+              triplet_relative_motion.push_back(
+                {{triplet.j, triplet.k}, {Rjk, tjk}});
+              triplet_relative_motion.push_back(
+                {{triplet.i, triplet.k}, {Rik, tik}});
 
               initial_estimates[thread_id].emplace_back(triplet_relative_motion);
 
@@ -551,7 +553,7 @@ void GlobalSfM_Translation_AveragingSolver::ComputePutativeTranslation_EdgesCove
                   std::advance(iter_J, 1);
                   while (iter_J != track.end())
                   { // matches(pair(view_id(I), view_id(J))) <= IndMatch(feat_id(I), feat_id(J))
-                    newpairMatches[std::make_pair(iter_I->first, iter_J->first)]
+                    newpairMatches[{iter_I->first, iter_J->first}]
                      .emplace_back(iter_I->second, iter_J->second);
                     ++iter_I;
                     ++iter_J;
@@ -601,7 +603,7 @@ bool GlobalSfM_Translation_AveragingSolver::Estimate_T_triplet
 {
   // List matches that belong to the triplet of poses
   PairWiseMatches map_triplet_matches;
-  const std::set<IndexT> set_pose_ids = {poses_id.i, poses_id.j, poses_id.k};
+  const std::set<IndexT> set_pose_ids {poses_id.i, poses_id.j, poses_id.k};
   // List shared correspondences (pairs) between poses
   for (const auto & match_iterator : matches_provider->pairWise_matches_)
   {
@@ -646,7 +648,7 @@ bool GlobalSfM_Translation_AveragingSolver::Estimate_T_triplet
       const IntrinsicBase * cam = sfm_data.intrinsics.at(view->id_intrinsic).get();
       intrinsic_ids.insert(view->id_intrinsic);
       const features::PointFeature pt = features_provider->getFeatures(idx_view)[track_it.second];
-      xxx[index++]->col(cpt) = ((*cam)(cam->get_ud_pixel(pt.coords().cast<double>()))).hnormalized();
+      xxx[index++]->col(cpt) = ((*cam)(cam->get_ud_pixel(pt.coords().cast<double>()))).colwise().hnormalized();
     }
     ++cpt;
   }
@@ -739,9 +741,6 @@ bool GlobalSfM_Translation_AveragingSolver::Estimate_T_triplet
       // get view Id and feat ID
       const uint32_t viewIndex = it->first;
       const uint32_t featIndex = it->second;
-
-      // initialize view and get intrinsics
-      const View * view = sfm_data.GetViews().at(viewIndex).get();
 
       // get feature
       const features::PointFeature & pt = features_provider->getFeatures(viewIndex)[featIndex];

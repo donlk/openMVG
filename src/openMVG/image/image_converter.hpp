@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -81,8 +83,8 @@ void ConvertPixelType( const ImageIn& imaIn, ImageOut *imaOut )
 {
   ( *imaOut ) = ImageOut( imaIn.Width(), imaIn.Height() );
   // Convert each input pixel to destination pixel
-  for( int j = 0; j < imaIn.Height(); ++j )
-    for( int i = 0; i < imaIn.Width(); ++i )
+  for (int j = 0; j < imaIn.Height(); ++j )
+    for (int i = 0; i < imaIn.Width(); ++i )
     {
       Convert( imaIn( j, i ), ( *imaOut )( j, i ) );
     }
@@ -99,16 +101,16 @@ void ConvertPixelType( const ImageIn& imaIn, ImageOut *imaOut )
 * @param scaling factor applied to input color component
 * @tparam Tin Input color type
 * @tparam[out] Tout Output color type
-* @todo Use SFINAE to ensure input type is an intergral one
+* @todo Use SFINAE to ensure input type is an integral one
 * @todo Why not using RGBfColor as output type ?
 */
-template< typename Tin, typename Tout >
+template<typename Tin, typename Tout>
 inline void convertRGB2Float(
   const Tin& valIn,
   Tout& valOut,
   float factor = 1.0f / 255.f )
 {
-  for( int channel = 0; channel < 3; ++channel )
+  for (int channel = 0; channel < 3; ++channel )
   {
     valOut( channel ) = ( float )( ( int )( valIn( channel ) ) * factor );
   }
@@ -122,15 +124,15 @@ inline void convertRGB2Float(
 * @tparam ImageIn Input image type
 * @todo Use SFINAE to ensure input type is an intergral one
 */
-template< typename ImageIn >
+template<typename ImageIn>
 void rgb2Float( const ImageIn& imaIn,
                 Image< RGBfColor > *imaOut, float factor = 1.0f / 255.f )
 {
   assert( imaIn.Depth() == 3 );
   ( *imaOut ).resize( imaIn.Width(), imaIn.Height() );
   // Convert each int RGB to float RGB values
-  for( int j = 0; j < imaIn.Height(); ++j )
-    for( int i = 0; i < imaIn.Width(); ++i )
+  for (int j = 0; j < imaIn.Height(); ++j )
+    for (int i = 0; i < imaIn.Width(); ++i )
     {
       convertRGB2Float( imaIn( j, i ), ( *imaOut )( j, i ), factor );
     }
@@ -154,7 +156,7 @@ void convertFloatToInt
   float factor = 255.f
 )
 {
-  for( int channel = 0; channel < 3; ++channel )
+  for (int channel = 0; channel < 3; ++channel )
   {
     valOut( channel ) = ( int )( valIn( channel ) * factor );
   }
@@ -174,9 +176,9 @@ inline void rgbFloat2rgbInt(
   assert( imaIn.Depth() == 3 );
   ( *imaOut ).resize( imaIn.Width(), imaIn.Height() );
   // Convert each int RGB to float RGB values
-  for( int j = 0; j < imaIn.Height(); ++j )
+  for (int j = 0; j < imaIn.Height(); ++j )
   {
-    for( int i = 0; i < imaIn.Width(); ++i )
+    for (int i = 0; i < imaIn.Width(); ++i )
     {
       convertFloatToInt( imaIn( j, i ), ( *imaOut )( j, i ), factor  );
     }

@@ -19,6 +19,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -29,10 +30,10 @@
 #ifndef OPENMVG_MULTIVIEW_TWO_VIEW_KERNEL_HPP
 #define OPENMVG_MULTIVIEW_TWO_VIEW_KERNEL_HPP
 
-#include "openMVG/multiview/conditioning.hpp"
-#include "openMVG/numeric/numeric.h"
-
 #include <vector>
+
+#include "openMVG/multiview/conditioning.hpp"
+#include "openMVG/numeric/extract_columns.hpp"
 
 namespace openMVG {
 namespace two_view {
@@ -53,7 +54,7 @@ namespace kernel {
 // error, but can never access the samples themselves.
 //
 // The Kernel objects must follow the following concept so that the robust
-// fitting alogrithm can fit this type of relation:
+// fitting algorithm can fit this type of relation:
 //
 //   1. Kernel::MAX_MODELS
 //   2. Kernel::MINIMUM_SAMPLES
@@ -123,7 +124,7 @@ public:
     NormalizePoints(x2, &x2_normalized, &T2);
 
     SolverArg::Solve(x1_normalized, x2_normalized, models);
-    // Unormalize model from the computed conditioning.
+    // Unnormalize model from the computed conditioning.
     for (int i = 0; i < models->size(); ++i) {
       UnnormalizerArg::Unnormalize(T1, T2, &(*models)[i]);
     }

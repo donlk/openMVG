@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -10,6 +12,7 @@
 #include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
 
 #include <algorithm>
+#include <limits>
 #include <iostream>
 #include <vector>
 
@@ -49,9 +52,8 @@ void BuildLinearProblem(LP_Constraints & cstraint)
   std::fill_n(cstraint.vec_sign_.begin(), 3, LP_Constraints::LP_LESS_OR_EQUAL);
   std::fill_n(cstraint.vec_sign_.begin()+3, 2, LP_Constraints::LP_GREATER_OR_EQUAL);
 
-  cstraint.vec_bounds_ = std::vector< std::pair<double,double> >(cstraint.nbParams_);
-  fill(cstraint.vec_bounds_.begin(),cstraint.vec_bounds_.end(),
-      std::make_pair((double)-1e+30, (double)1e+30));
+  cstraint.vec_bounds_.assign(cstraint.nbParams_,
+    {std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max()});
 }
 
 TEST(linearProgramming, osiclp_dense_sample) {
@@ -116,9 +118,7 @@ void BuildSparseLinearProblem(LP_Constraints_Sparse & cstraint)
   vec_sign[2] = LP_Constraints::LP_LESS_OR_EQUAL;
 
   // Variable bounds
-  cstraint.vec_bounds_ = std::vector< std::pair<double,double> >(4);
-  fill(cstraint.vec_bounds_.begin(),cstraint.vec_bounds_.end(),
-      std::make_pair(0.0, (double)1e+30));
+  cstraint.vec_bounds_.assign(4, {0.0, std::numeric_limits<double>::max()});
   cstraint.vec_bounds_[1].second = 10;
 
   // Objective to maximize

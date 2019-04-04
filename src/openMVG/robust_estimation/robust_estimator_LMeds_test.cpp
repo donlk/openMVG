@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -9,7 +10,7 @@
 #include "openMVG/robust_estimation/robust_estimator_LMeds.hpp"
 #include "openMVG/robust_estimation/score_evaluator.hpp"
 
-#include "openMVG/numeric/numeric.h"
+#include "openMVG/numeric/eigen_alias_definition.h"
 
 #include "testing/testing.h"
 
@@ -22,11 +23,11 @@ template<typename Kernel>
 void EvalInlier(const Kernel & kernel, const typename Kernel::Model & model,
    double dThreshold, std::vector<uint32_t> * vec_inliers)
 {
-  ScorerEvaluator<Kernel> scorer(dThreshold);
+  const ScorerEvaluator<Kernel> scorer(dThreshold);
   std::vector<uint32_t> vec_index(kernel.NumSamples());
   std::iota(vec_index.begin(), vec_index.end(), 0);
 
-  scorer.Score(kernel, model, vec_index, &(*vec_inliers));
+  scorer.Score(kernel, model, vec_index, vec_inliers);
 }
 
 // Test without outlier
@@ -109,15 +110,15 @@ TEST(LMedsLineFitter, RealisticCase) {
   GTModel <<  -2.0, 6.3;
 
   //-- Build the point list according the given model
-  for(int i = 0; i < NbPoints; ++i)  {
+  for (int i = 0; i < NbPoints; ++i)  {
     xy.col(i) << i, (double)i*GTModel[1] + GTModel[0];
   }
 
   //-- Add some noise (for the asked percentage amount)
   const int nbPtToNoise = (int) NbPoints*inlierPourcentAmount/100.0;
   std::vector<uint32_t> vec_samples; // Fit with unique random index
-  UniformSample(nbPtToNoise, NbPoints, &vec_samples);
-  for(const auto index : vec_samples)
+  UniformSample(nbPtToNoise, NbPoints, random_generator, &vec_samples);
+  for (const auto index : vec_samples)
   {
     //Additive random noise
     xy.col(index) << xy.col(index)(0)+rand()%2-3,
@@ -128,7 +129,7 @@ TEST(LMedsLineFitter, RealisticCase) {
 
   Vec2 model;
   double dThreshold = std::numeric_limits<double>::infinity();
-  const double dBestMedian = LeastMedianOfSquares(kernel, &model, &dThreshold);
+  LeastMedianOfSquares(kernel, &model, &dThreshold);
   EXPECT_NEAR(-2.0, model[0], dExpectedPrecision);
   EXPECT_NEAR(6.3, model[1], dExpectedPrecision);
   //Compute which point are inliers (error below dThreshold)

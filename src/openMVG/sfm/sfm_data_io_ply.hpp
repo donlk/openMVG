@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -12,6 +13,8 @@
 
 #include <fstream>
 #include <iomanip>
+#include <limits>
+#include <string>
 
 namespace openMVG {
 namespace sfm {
@@ -165,7 +168,7 @@ inline bool Save_PLY
           else
           {
             stream.write( reinterpret_cast<const char*> ( iterGCP.second.X.data() ), sizeof( Vec3 ) );
-            stream.write( reinterpret_cast<const char*> ( Vec3uc(255, 255, 255).data() ), sizeof( Vec3uc ) );
+            stream.write( reinterpret_cast<const char*> ( Vec3uc(255, 0, 0).data() ), sizeof( Vec3uc ) );
           }
         }
       }

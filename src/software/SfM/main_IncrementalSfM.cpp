@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -5,14 +6,25 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <cstdlib>
-
-#include "openMVG/sfm/sfm.hpp"
-#include "openMVG/system/timer.hpp"
+#include "openMVG/cameras/Camera_Common.hpp"
 #include "openMVG/cameras/Cameras_Common_command_line_helper.hpp"
+#include "openMVG/sfm/pipelines/sequential/sequential_SfM.hpp"
+#include "openMVG/sfm/pipelines/sfm_features_provider.hpp"
+#include "openMVG/sfm/pipelines/sfm_matches_provider.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_io.hpp"
+#include "openMVG/sfm/sfm_report.hpp"
+#include "openMVG/sfm/sfm_view.hpp"
+#include "openMVG/system/timer.hpp"
+#include "openMVG/types.hpp"
 
 #include "third_party/cmdLine/cmdLine.h"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
+
+#include <cstdlib>
+#include <memory>
+#include <string>
+#include <utility>
 
 using namespace openMVG;
 using namespace openMVG::cameras;
@@ -30,7 +42,7 @@ bool computeIndexFromImageNames(
     return false;
   }
 
-  initialPairIndex = Pair(UndefinedIndexT, UndefinedIndexT);
+  initialPairIndex = {UndefinedIndexT, UndefinedIndexT};
 
   /// List views filenames and find the one that correspond to the user ones:
   for (Views::const_iterator it = sfm_data.GetViews().begin();
@@ -64,7 +76,7 @@ int main(int argc, char **argv)
   CmdLine cmd;
 
   std::string sSfM_Data_Filename;
-  std::string sMatchesDir;
+  std::string sMatchesDir, sMatchFilename;
   std::string sOutDir = "";
   std::pair<std::string,std::string> initialPairString("","");
   std::string sIntrinsic_refinement_options = "ADJUST_ALL";
@@ -73,6 +85,7 @@ int main(int argc, char **argv)
 
   cmd.add( make_option('i', sSfM_Data_Filename, "input_file") );
   cmd.add( make_option('m', sMatchesDir, "matchdir") );
+  cmd.add( make_option('M', sMatchFilename, "match_file") );
   cmd.add( make_option('o', sOutDir, "outdir") );
   cmd.add( make_option('a', initialPairString.first, "initialPairA") );
   cmd.add( make_option('b', initialPairString.second, "initialPairB") );
@@ -83,7 +96,7 @@ int main(int argc, char **argv)
   try {
     if (argc == 1) throw std::string("Invalid parameter.");
     cmd.process(argc, argv);
-  } catch(const std::string& s) {
+  } catch (const std::string& s) {
     std::cerr << "Usage: " << argv[0] << '\n'
     << "[-i|--input_file] path to a SfM_Data scene\n"
     << "[-m|--matchdir] path to the matches that corresponds to the provided SfM_Data scene\n"
@@ -110,15 +123,15 @@ int main(int argc, char **argv)
       <<      "\t\t-> refine the focal length & the distortion coefficient(s) (if any)\n"
       << "\t ADJUST_PRINCIPAL_POINT|ADJUST_DISTORTION\n"
       <<      "\t\t-> refine the principal point position & the distortion coefficient(s) (if any)\n"
-      << "[-P|--prior_usage] Enable usage of motion priors (i.e GPS positions) (default: false)\n"
+    << "[-P|--prior_usage] Enable usage of motion priors (i.e GPS positions) (default: false)\n"
+    << "[-M|--match_file] path to the match file to use.\n"
     << std::endl;
 
     std::cerr << s << std::endl;
     return EXIT_FAILURE;
   }
 
-  if (i_User_camera_model < PINHOLE_CAMERA ||
-      i_User_camera_model > PINHOLE_CAMERA_FISHEYE )  {
+  if ( !isValid(openMVG::cameras::EINTRINSIC(i_User_camera_model)) )  {
     std::cerr << "\n Invalid camera type" << std::endl;
     return EXIT_FAILURE;
   }
@@ -159,11 +172,12 @@ int main(int argc, char **argv)
   }
   // Matches reading
   std::shared_ptr<Matches_Provider> matches_provider = std::make_shared<Matches_Provider>();
-  if // Try to read the two matches file formats
+  if // Try to read the provided match filename or the default one (matches.f.txt/bin)
   (
-    !(matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.f.txt")) ||
-      matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.f.bin"))) &&
-    !(matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.e.txt")) ||
+    !(matches_provider->load(sfm_data, sMatchFilename) ||
+      matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.f.txt")) ||
+      matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.f.bin")) ||
+      matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.e.txt")) ||
       matches_provider->load(sfm_data, stlplus::create_filespec(sMatchesDir, "matches.e.bin")))
   )
   {
@@ -209,7 +223,7 @@ int main(int argc, char **argv)
   if (!initialPairString.first.empty() && !initialPairString.second.empty())
   {
     Pair initialPairIndex;
-    if(!computeIndexFromImageNames(sfm_data, initialPairString, initialPairIndex))
+    if (!computeIndexFromImageNames(sfm_data, initialPairString, initialPairIndex))
     {
         std::cerr << "Could not find the initial pairs <" << initialPairString.first
           <<  ", " << initialPairString.second << ">!\n";

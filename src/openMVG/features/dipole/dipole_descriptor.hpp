@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2014 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,7 +9,9 @@
 #ifndef OPENMVG_FEATURES_DIPOLE_DIPOLE_DESCRIPTOR_HPP
 #define OPENMVG_FEATURES_DIPOLE_DIPOLE_DESCRIPTOR_HPP
 
+
 #include "openMVG/features/feature.hpp"
+#include "openMVG/features/descriptor.hpp"
 #include "openMVG/image/image_container.hpp"
 #include "openMVG/image/sample.hpp"
 
@@ -28,7 +32,7 @@ namespace features
   // Note :
   // - Angle is in radians.
   // - data the output array (must be allocated to 20 values).
-  template<typename Real, typename T>
+  template<typename Real>
   void PickNaiveDipole
   (
     const image::Image<Real> & image,
@@ -36,7 +40,7 @@ namespace features
     float y,
     float scale,
     float angle,
-    T * data
+    float * data
   )
   {
     // Use bilinear sampling
@@ -109,13 +113,13 @@ namespace features
       dipoleF2(i) = sampler(image, yi, xi) - sampler(image, yii, xii);
     }
     // Normalize to be affine luminance invariant (a*I(x,y)+b).
-    Map< Vecf > dataMap( data, 20);
+    Map<Vecf> dataMap( data, 20);
     dataMap.block<8,1>(0,0) = (A * dipoleF1).normalized();
     dataMap.block<12,1>(8,0) = dipoleF2.normalized();
   }
 
   // Pick an angular smoothed dipole
-  template<typename Real, typename T>
+  template<typename Real>
   void PickASDipole
   (
     const image::Image<Real> & image,
@@ -123,7 +127,7 @@ namespace features
     float y,
     float scale,
     float angle,
-    T * data)
+    float * data)
   {
     const image::Sampler2d<image::SamplerLinear> sampler;
     // Setup the rotation center.
@@ -133,7 +137,7 @@ namespace features
     const float lambda2 = lambda1 / 2.0f;
     const float angleSubdiv = 2.0f * M_PI / 12.0f;
 
-    //-- First order dipole :
+    //-- First order dipole:
     Vecf dipoleF1(12);
     for (int i = 0; i < 12; ++i)
     {
@@ -159,7 +163,7 @@ namespace features
           0,-1, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
           1, 0, 0,-1, 0, 0, 0, 0, 0, 0, 0, 0;
 
-    //-- Second order dipole :
+    //-- Second order dipole:
     Vecf dipoleF2(12);
     for (int i = 0; i < 12; ++i)
     {
@@ -189,7 +193,7 @@ namespace features
         sampler(image, yii3, xii3)) /3.0f;
     }
     // Normalize to be affine luminance invariant (a*I(x,y)+b).
-    Map< Vecf > dataMap( data, 20);
+    Map<Vecf> dataMap( data, 20);
     dataMap.block<8,1>(0,0) = (A * dipoleF1).normalized();
     dataMap.block<12,1>(8,0) = dipoleF2.normalized();
   }
@@ -199,9 +203,11 @@ namespace features
     ** @param Li Input image
     ** @param ipt Input interest point
     ** @param desc output descriptor (floating point descriptor)
-    ** @param bAngularSmoothedDipole Extract or not a angular smoothed dipole
+    ** @param bAngularSmoothedDipole Tell if we must extract an upright or an
+    **  angular smoothed dipole
+    ** @param magnif_factor Scaling factor used to rescale the dipole sampling
     **/
-  template< typename Real>
+  template<typename Real>
   void ComputeDipoleDescriptor
   (
     const image::Image<Real> & Li,

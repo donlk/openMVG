@@ -19,6 +19,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -27,14 +28,19 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/multiview/solver_fundamental_kernel.hpp"
+#include "openMVG/numeric/nullspace.hpp"
+#include "openMVG/numeric/numeric.h"
 #include "openMVG/numeric/poly.h"
 
 namespace openMVG {
 namespace fundamental {
 namespace kernel {
 
-void SevenPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *F) {
-  assert(2 == x1.rows());
+void SevenPointSolver::Solve
+(
+  const Mat2X &x1, const Mat2X &x2, std::vector<Mat3> *F
+)
+{
   assert(7 <= x1.cols());
   assert(x1.rows() == x2.rows());
   assert(x1.cols() == x2.cols());
@@ -45,17 +51,27 @@ void SevenPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *F)
     using Mat9 = Eigen::Matrix<double, 9, 9>;
     // In the minimal solution use fixed sized matrix to let Eigen and the
     //  compiler doing the maximum of optimization.
-    Mat9 A = Mat::Zero(9,9);
-    EncodeEpipolarEquation(x1, x2, &A);
-    // Find the two F matrices in the nullspace of A.
-    Nullspace2(&A, &f1, &f2);
+    Mat9 epipolar_constraint = Mat::Zero(9,9);
+    EncodeEpipolarEquation(x1.colwise().homogeneous(),
+                           x2.colwise().homogeneous(),
+                           &epipolar_constraint);
+    // Find the two F matrices in the nullspace of epipolar_constraint.
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 9, 9>> solver
+      (epipolar_constraint.transpose() * epipolar_constraint);
+    f1 = solver.eigenvectors().leftCols<2>().col(0);
+    f2 = solver.eigenvectors().leftCols<2>().col(1);
   }
   else  {
     // Set up the homogeneous system Af = 0 from the equations x'T*F*x = 0.
-    Mat A(x1.cols(), 9);
-    EncodeEpipolarEquation(x1, x2, &A);
-    // Find the two F matrices in the nullspace of A.
-    Nullspace2(&A, &f1, &f2);
+    Mat epipolar_constraint(x1.cols(), 9);
+    EncodeEpipolarEquation(x1.colwise().homogeneous(),
+                           x2.colwise().homogeneous(),
+                           &epipolar_constraint);
+    // Find the two F matrices in the nullspace of epipolar_constraint.
+    Eigen::SelfAdjointEigenSolver<Mat> solver
+      (epipolar_constraint.transpose() * epipolar_constraint);
+    f1 = solver.eigenvectors().leftCols<2>().col(0);
+    f2 = solver.eigenvectors().leftCols<2>().col(1);
   }
 
   const Mat3 F1 = Map<RMat3>(f1.data());
@@ -89,12 +105,15 @@ void SevenPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *F)
 
   // Build the fundamental matrix for each solution.
   for (int kk = 0; kk < num_roots; ++kk)  {
-    F->push_back(F1 + roots[kk] * F2);
+    F->emplace_back(F1 + roots[kk] * F2);
   }
 }
 
-void EightPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *Fs) {
-  assert(2 == x1.rows());
+void EightPointSolver::Solve
+(
+  const Mat2X &x1, const Mat2X &x2, std::vector<Mat3> *Fs
+)
+{
   assert(8 <= x1.cols());
   assert(x1.rows() == x2.rows());
   assert(x1.cols() == x2.cols());
@@ -104,14 +123,21 @@ void EightPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *Fs
     using Mat9 = Eigen::Matrix<double, 9, 9>;
     // In the minimal solution use fixed sized matrix to let Eigen and the
     //  compiler doing the maximum of optimization.
-    Mat9 A = Mat::Zero(9,9);
-    EncodeEpipolarEquation(x1, x2, &A);
-    Nullspace(&A, &f);
+    Mat9 epipolar_constraint = Mat::Zero(9,9);
+    EncodeEpipolarEquation(x1.colwise().homogeneous(),
+                           x2.colwise().homogeneous(),
+                           &epipolar_constraint);
+    Eigen::SelfAdjointEigenSolver<Eigen::Matrix<double, 9, 9>> solver
+      (epipolar_constraint.transpose() * epipolar_constraint);
+    f = solver.eigenvectors().leftCols<1>();
   }
   else  {
-    MatX9 A(x1.cols(), 9);
-    EncodeEpipolarEquation(x1, x2, &A);
-    Nullspace(&A, &f);
+    MatX9 epipolar_constraint(x1.cols(), 9);
+    epipolar_constraint.fill(0.0);
+    EncodeEpipolarEquation(x1, x2, &epipolar_constraint);
+    Eigen::SelfAdjointEigenSolver<MatX9> solver
+      (epipolar_constraint.transpose() * epipolar_constraint);
+    f = solver.eigenvectors().leftCols<1>();
   }
 
   Mat3 F = Map<RMat3>(f.data());
@@ -125,6 +151,44 @@ void EightPointSolver::Solve(const Mat &x1, const Mat &x2, std::vector<Mat3> *Fs
     F = USV.matrixU() * d.asDiagonal() * USV.matrixV().transpose();
   }
   Fs->push_back(F);
+}
+
+double SampsonError::Error
+(
+  const Mat3 &F, const Vec2 &x, const Vec2 &y
+)
+{
+  // See page 287 equation (11.9) of HZ.
+  const Vec3 F_x = F * x.homogeneous();
+  const Vec3 Ft_y = F.transpose() * y.homogeneous();
+  return Square(y.homogeneous().dot(F_x))
+    / (F_x.head<2>().squaredNorm() + Ft_y.head<2>().squaredNorm());
+}
+
+double SymmetricEpipolarDistanceError::Error
+(
+  const Mat3 &F, const Vec2 &x, const Vec2 &y
+)
+{
+  // See page 288 equation (11.10) of HZ.
+  const Vec3 F_x = F * x.homogeneous();
+  const Vec3 Ft_y = F.transpose() * y.homogeneous();
+  return Square(y.homogeneous().dot(F_x)) *
+    ( 1.0 / F_x.head<2>().squaredNorm()
+      + 1.0 / Ft_y.head<2>().squaredNorm())
+    / 4.0;  // The divide by 4 is to make this match the Sampson distance.
+}
+
+
+double EpipolarDistanceError::Error
+(
+  const Mat3 &F, const Vec2 &x, const Vec2 &y
+)
+{
+  // Transfer error in image 2
+  // See page 287 equation (11.9) of HZ.
+  const Vec3 F_x = F * x.homogeneous();
+  return Square(F_x.dot(y.homogeneous())) /  F_x.head<2>().squaredNorm();
 }
 
 }  // namespace kernel

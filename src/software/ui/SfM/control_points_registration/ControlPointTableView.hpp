@@ -1,14 +1,17 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2015 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+#ifndef CONTROLPOINTTABLEVIEW_HPP
+#define CONTROLPOINTTABLEVIEW_HPP
+
 #include <QDialog>
 #include <QTableWidget>
 #include "openMVG/sfm/sfm_data.hpp"
-
-#pragma once
 
 namespace control_point_GUI {
 
@@ -25,7 +28,7 @@ public:
   );
 
   /// Update control points X,Y,Z data (if valid datum is provided)
-  void update_control_points(openMVG::sfm::Landmarks & control_points);
+  void updateControlPoints(openMVG::sfm::Landmarks & control_points);
 
   /// Delete selected control_points row(s) on Key_Delete event
   void keyReleaseEvent(QKeyEvent* event);
@@ -40,3 +43,5 @@ private:
 };
 
 } // namespace control_point_GUI
+
+#endif /* CONTROLPOINTTABLEVIEW_HPP */

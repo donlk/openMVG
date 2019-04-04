@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2014, 2015 Pierre MOULON.
 
@@ -8,6 +9,10 @@
 #ifndef OPENMVG_MATCHING_IMAGE_COLLECTION_H_AC_ROBUST_HPP
 #define OPENMVG_MATCHING_IMAGE_COLLECTION_H_AC_ROBUST_HPP
 
+#include <limits>
+#include <utility>
+#include <vector>
+
 #include "openMVG/matching/indMatch.hpp"
 #include "openMVG/matching/indMatchDecoratorXY.hpp"
 #include "openMVG/matching_image_collection/Geometric_Filter_utils.hpp"
@@ -15,6 +20,7 @@
 #include "openMVG/robust_estimation/guided_matching.hpp"
 #include "openMVG/robust_estimation/robust_estimator_ACRansac.hpp"
 #include "openMVG/robust_estimation/robust_estimator_ACRansacKernelAdaptator.hpp"
+#include "openMVG/sfm/pipelines/sfm_regions_provider.hpp"
 #include "openMVG/sfm/sfm_data.hpp"
 
 namespace openMVG {
@@ -28,15 +34,22 @@ namespace matching_image_collection {
 //-- A contrario homography matrix estimation template functor used for filter pair of putative correspondences
 struct GeometricFilter_HMatrix_AC
 {
-  GeometricFilter_HMatrix_AC(
+  GeometricFilter_HMatrix_AC
+  (
     double dPrecision = std::numeric_limits<double>::infinity(),
-    size_t iteration = 1024)
-    : m_dPrecision(dPrecision), m_stIteration(iteration), m_H(Mat3::Identity()),
-      m_dPrecision_robust(std::numeric_limits<double>::infinity()){};
+    uint32_t iteration = 1024
+  ):
+    m_dPrecision(dPrecision),
+    m_stIteration(iteration),
+    m_H(Mat3::Identity()),
+    m_dPrecision_robust(std::numeric_limits<double>::infinity())
+  {
+  }
 
   /// Robust fitting of the HOMOGRAPHY matrix
   template<typename Regions_or_Features_ProviderT>
-  bool Robust_estimation(
+  bool Robust_estimation
+  (
     const sfm::SfM_Data * sfm_data,
     const std::shared_ptr<Regions_or_Features_ProviderT> & regions_provider,
     const Pair pairIndex,
@@ -55,7 +68,7 @@ struct GeometricFilter_HMatrix_AC
     // Get corresponding point regions arrays
     //--
 
-    Mat xI,xJ;
+    Mat2X xI,xJ;
     MatchesPairToMat(pairIndex, vec_PutativeMatches, sfm_data, regions_provider, xI, xJ);
 
     //--
@@ -81,16 +94,19 @@ struct GeometricFilter_HMatrix_AC
     const std::pair<double,double> ACRansacOut =
       ACRANSAC(kernel, vec_inliers, m_stIteration, &m_H, upper_bound_precision);
 
-    if (vec_inliers.size() > KernelType::MINIMUM_SAMPLES *2.5)  {
+    if (vec_inliers.size() > KernelType::MINIMUM_SAMPLES *2.5)
+    {
       m_dPrecision_robust = ACRansacOut.first;
       // update geometric_inliers
       geometric_inliers.reserve(vec_inliers.size());
-      for (const uint32_t & index : vec_inliers) {
+      for (const uint32_t & index : vec_inliers)
+      {
         geometric_inliers.push_back( vec_PutativeMatches[index] );
       }
       return true;
     }
-    else  {
+    else
+    {
       vec_inliers.clear();
       return false;
     }
@@ -99,23 +115,21 @@ struct GeometricFilter_HMatrix_AC
 
   /// Export point feature based vector to a matrix [(x,y)'T, (x,y)'T]
   /// Use the camera intrinsics in order to get undistorted pixel coordinates
-  template<typename MatT >
-  static void PointsToMat(
+  static void PointsToMat
+  (
     const cameras::IntrinsicBase * cam,
     const features::PointFeatures & vec_feats,
-    MatT & m)
+    Eigen::Ref<Mat> m)
   {
     m.resize(2, vec_feats.size());
-    using Scalar = typename MatT::Scalar; // Output matrix type
 
     size_t i = 0;
-    for( features::PointFeatures::const_iterator iter = vec_feats.begin();
-      iter != vec_feats.end(); ++iter, ++i)
+    for (const auto& feature :vec_feats)
     {
-      if (cam)
-        m.col(i) = cam->get_ud_pixel(Vec2(iter->x(), iter->y()));
-      else
-        m.col(i) = iter->coords().cast<Scalar>();
+        m.col(i) = cam ?
+          cam->get_ud_pixel({feature.x(), feature.y()})
+          : feature.coords().cast<double>();
+      ++i;
     }
   }
 
@@ -145,14 +159,17 @@ struct GeometricFilter_HMatrix_AC
         sfm_data->GetIntrinsics().count(view_J->id_intrinsic) ?
           sfm_data->GetIntrinsics().at(view_J->id_intrinsic).get() : nullptr;
 
-      std::shared_ptr<features::Regions> regionsI = regions_provider->get(iIndex);
-      std::shared_ptr<features::Regions> regionsJ = regions_provider->get(jIndex);
+      const std::shared_ptr<features::Regions>
+        regionsI = regions_provider->get(iIndex),
+        regionsJ = regions_provider->get(jIndex);
 
       if (dDistanceRatio < 0)
       {
         // Filtering based only on region positions
-        const features::PointFeatures pointsFeaturesI = regionsI->GetRegionsPositions();
-        const features::PointFeatures pointsFeaturesJ = regionsJ->GetRegionsPositions();
+        const features::PointFeatures
+          pointsFeaturesI = regionsI->GetRegionsPositions(),
+          pointsFeaturesJ = regionsJ->GetRegionsPositions();
+
         Mat xI, xJ;
         PointsToMat(cam_I, pointsFeaturesI, xI);
         PointsToMat(cam_J, pointsFeaturesJ, xJ);
@@ -171,20 +188,21 @@ struct GeometricFilter_HMatrix_AC
       else
       {
         // Filtering based on region positions and regions descriptors
-        geometry_aware::GuidedMatching
-          <Mat3, openMVG::homography::kernel::AsymmetricError>(
-          m_H,
-          cam_I, *regionsI,
-          cam_J, *regionsJ,
-          Square(m_dPrecision_robust), Square(dDistanceRatio),
-          matches);
+        geometry_aware::GuidedMatching<
+          Mat3,
+          openMVG::homography::kernel::AsymmetricError>(
+            m_H,
+            cam_I, *regionsI,
+            cam_J, *regionsJ,
+            Square(m_dPrecision_robust), Square(dDistanceRatio),
+            matches);
       }
     }
     return matches.size() != 0;
   }
 
-  double m_dPrecision;  //upper_bound precision used for robust estimation
-  size_t m_stIteration; //maximal number of iteration for robust estimation
+  double m_dPrecision;    // upper_bound precision used for robust estimation
+  uint32_t m_stIteration; // maximal number of iteration for robust estimation
   //
   //-- Stored data
   Mat3 m_H;

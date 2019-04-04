@@ -28,13 +28,15 @@
 #ifndef OPENMVG_NUMERIC_NUMERIC_H
 #define OPENMVG_NUMERIC_NUMERIC_H
 
-#include "openMVG/numeric/eigen_alias_definition.hpp"
-
+#include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <iterator>
 #include <numeric>
 #include <string>
 #include <vector>
+
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG
 {
@@ -74,7 +76,7 @@ inline T clamp( const T & val, const T& min, const T & max )
 }
 
 /**
-* @brief Given a vector, computes it's cross product matrix
+* @brief Given a vector, computes its cross product matrix
 *
 * Cross product matrix is a helper matrix used to express cross product as a multiplication matrix \n
 * Given two vectors \f$a=\begin{pmatrix}a_x\\a_y\\a_z\end{pmatrix}\f$ and \f$b=\begin{pmatrix}b_x\\b_y\\b_z\end{pmatrix}\f$, cross product \f$a\times b\f$ is equal to :\n
@@ -180,74 +182,6 @@ inline double DistanceLInfinity( const TVec &x, const TVec &y )
 }
 
 /**
-* @brief Solve linear system
-*
-* Linear system is given by : \n
-* \f$ A x = 0 \f$
-* Solution is found using the constraint on x : \f$ \| x \| = 1 \f$
-*
-* @param[in,out] A Input matrix storing the system to solve
-* @param[out] nullspace result vector containing the solution of the system
-* @return Singular value corresponding to the solution of the system
-*
-* @note Computation is made using SVD decomposition of input matrix
-* @note Input matrix A content may be modified during computation
-* @note Input vector nullspace may be resized to store the full result
-*/
-template <typename TMat, typename TVec>
-double Nullspace( TMat *A, TVec *nullspace )
-{
-  if ( A->rows() >= A->cols() )
-  {
-    Eigen::JacobiSVD<TMat> svd( *A, Eigen::ComputeFullV );
-    ( *nullspace ) = svd.matrixV().col( A->cols() - 1 );
-    return svd.singularValues()( A->cols() - 1 );
-  }
-  // Extend A with rows of zeros to make it square. It's a hack, but is
-  // necessary until Eigen supports SVD with more columns than rows.
-  TMat A_extended( A->cols(), A->cols() );
-  A_extended.block( A->rows(), 0, A->cols() - A->rows(), A->cols() ).setZero();
-  A_extended.block( 0, 0, A->rows(), A->cols() ) = ( *A );
-  return Nullspace( &A_extended, nullspace );
-}
-
-/**
-* @brief Solve linear system and gives the two best solutions
-*
-* Linear system is given by : \n
-* \f$ A x = 0 \f$
-* Solution is found using the constraint on x : \f$ \| x \| = 1 \f$
-*
-* @param[in,out] A Input matrix storing the system to solve
-* @param[out] x1 result vector containing the best solution of the system
-* @param[out] x2 result vector containing the second best solution of the system
-* @return Singular value corresponding to the best solution of the system
-*
-* @note Computation is made using SVD decomposition of input matrix
-* @note Input matrix A content may be modified during computation
-* @note Input vector nullspace may be resized to store the full result
-*/
-template <typename TMat, typename TVec1, typename TVec2>
-inline double Nullspace2( TMat *A, TVec1 *x1, TVec2 *x2 )
-{
-  if ( A->rows() >= A->cols() )
-  {
-    Eigen::JacobiSVD<TMat> svd( *A, Eigen::ComputeFullV );
-    TMat V = svd.matrixV();
-    *x1 = V.col( A->cols() - 1 );
-    *x2 = V.col( A->cols() - 2 );
-    return svd.singularValues()( A->cols() - 1 );
-  }
-  // Extend A with rows of zeros to make it square. It's a hack, but is
-  // necessary until Eigen supports SVD with more columns than rows.
-  TMat A_extended( A->cols(), A->cols() );
-  A_extended.block( A->rows(), 0, A->cols() - A->rows(), A->cols() ).setZero();
-  A_extended.block( 0, 0, A->rows(), A->cols() ) = ( *A );
-  return Nullspace2( &A_extended, x1, x2 );
-}
-
-
-/**
 * @brief Compute look at matrix
 * Make a rotation matrix such that center becomes the direction of the
 * positive z-axis, and y is oriented close to up by default.
@@ -346,7 +280,7 @@ VStack ( const Eigen::MatrixBase<Derived1>& lhs, const Eigen::MatrixBase<Derived
 template<typename TMat>
 inline double FrobeniusNorm( const TMat &A )
 {
-  return sqrt( A.array().abs2().sum() );
+  return A.norm();
 }
 
 /**
@@ -363,11 +297,11 @@ inline double FrobeniusDistance( const TMat &A, const TMat &B )
 
 
 /**
-* @brief Compute similarity of matrices given cosine similarity mesure
+* @brief Compute similarity of matrices given cosine similarity measure
 * \f$ \cos( A , B ) = \frac{ A . B }{ \| A \|_2 \| B \|_2 } \f$
 * @param a First matrix
 * @param b Second matrix
-* @return cosine similarity mesure between the input matrices
+* @return cosine similarity measure between the input matrices
 */
 template<class TMat>
 double CosinusBetweenMatrices( const TMat &a, const TMat &b )
@@ -375,26 +309,6 @@ double CosinusBetweenMatrices( const TMat &a, const TMat &b )
   return ( a.array() * b.array() ).sum() /
          FrobeniusNorm( a ) / FrobeniusNorm( b );
 }
-
-/**
-* @brief Extract a submatrix given a list of column
-* @param A Input matrix
-* @param columns A vector of columns index to extract
-* @return Matrix containing a subset of input matrix columns
-* @note columns index start at index 0
-* @note Assuming columns contains a list of valid columns index
-*/
-template <typename TMat, typename TCols>
-TMat ExtractColumns( const TMat &A, const TCols &columns )
-{
-  TMat compressed( A.rows(), columns.size() );
-  for ( size_t i = 0; i < static_cast<size_t>( columns.size() ); ++i )
-  {
-    compressed.col( i ) = A.col( columns[i] );
-  }
-  return compressed;
-}
-
 
 /**
 * @brief Compute per row mean and variance
@@ -450,7 +364,7 @@ template <typename Type, typename DataInputIterator>
 bool minMaxMeanMedian( DataInputIterator begin, DataInputIterator end,
                        Type & min, Type & max, Type & mean, Type & median )
 {
-  if( std::distance( begin, end ) < 1 )
+  if (std::distance( begin, end ) < 1 )
   {
     return false;
   }
@@ -459,8 +373,8 @@ bool minMaxMeanMedian( DataInputIterator begin, DataInputIterator end,
   std::sort( vec_val.begin(), vec_val.end() );
   min = vec_val[0];
   max = vec_val[vec_val.size() - 1];
-  mean = accumulate( vec_val.begin(), vec_val.end(), Type( 0 ) )
-         / static_cast<Type>( vec_val.size() );
+  mean = std::accumulate( vec_val.begin(), vec_val.end(), Type( 0 ) )
+    / static_cast<Type>( vec_val.size() );
   median = vec_val[vec_val.size() / 2];
   return true;
 }
@@ -484,8 +398,8 @@ void minMaxMeanMedian( DataInputIterator begin, DataInputIterator end )
 }
 
 /**
- ** Split a range [ a ; b [ into a set of n ranges :
- [ a ; c1 [ U [ c1 ; c2 [ U ... U [ c(n-1) ; b [
+ ** Split a range [ a; b [ into a set of n ranges :
+ [ a; c1 [ U [ c1; c2 [ U ... U [ c(n-1); b [
   **
   Output range vector only store [ a , c1 , c2 , ... , b ]
 
@@ -496,26 +410,26 @@ void minMaxMeanMedian( DataInputIterator begin, DataInputIterator end )
  ** @param nb_split Number of desired split
  ** @param d_range Output splitted range
  **/
-template < typename T >
+template <typename T>
 void SplitRange( const T range_start , const T range_end , const int nb_split ,
-                 std::vector< T > & d_range )
+                 std::vector<T > & d_range )
 {
-  const T range_length = range_end - range_start ;
-  if( range_length < nb_split )
+  const T range_length = range_end - range_start;
+  if (range_length < nb_split )
   {
-    d_range.push_back( range_start ) ;
-    d_range.push_back( range_end ) ;
+    d_range.push_back( range_start );
+    d_range.push_back( range_end );
   }
   else
   {
-    const T delta_range = range_length / nb_split ;
+    const T delta_range = range_length / nb_split;
 
-    d_range.push_back( range_start ) ;
-    for( int i = 1 ; i < nb_split ; ++i )
+    d_range.push_back( range_start );
+    for (int i = 1; i < nb_split; ++i )
     {
-      d_range.push_back( range_start + i * delta_range ) ;
+      d_range.push_back( range_start + i * delta_range );
     }
-    d_range.push_back( range_end ) ;
+    d_range.push_back( range_end );
   }
 }
 

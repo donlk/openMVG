@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013, 2014 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -14,6 +16,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <numeric>
 #include <vector>
 
 using namespace openMVG;
@@ -179,7 +182,7 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_SimpleTriplet)
   //- Solve the global rotation estimation problem :
   Matrix3x3Arr vec_globalR(3);
   const size_t nMainViewID = 0;
-  EXPECT_TRUE(GlobalRotationsRobust(vec_relativeRotEstimate, vec_globalR, nMainViewID, 0.0f, NULL));
+  EXPECT_TRUE(GlobalRotationsRobust(vec_relativeRotEstimate, vec_globalR, nMainViewID, 0.0f, nullptr));
 
   // Check that the loop is closing
   EXPECT_MATRIX_NEAR(Mat3::Identity(), (vec_globalR[0]*vec_globalR[1]*vec_globalR[2]), 1e-4);
@@ -234,7 +237,7 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_CompleteGraph)
   //- Solve the global rotation estimation problem :
   Matrix3x3Arr vec_globalR(iNviews);
   size_t nMainViewID = 0;
-  const bool bTest = GlobalRotationsRobust(vec_relativeRotEstimate, vec_globalR, nMainViewID, 0.0f, NULL);
+  const bool bTest = GlobalRotationsRobust(vec_relativeRotEstimate, vec_globalR, nMainViewID, 0.0f, nullptr);
   EXPECT_TRUE(bTest);
 
   // Check that the loop is closing
@@ -273,7 +276,7 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_CompleteGraph_outliers)
 
   //Link each camera to the two next ones
   RelativeRotations vec_relativeRotEstimate;
-  std::vector<std::pair<size_t,size_t> > vec_unique;
+  std::vector<std::pair<size_t,size_t>> vec_unique;
   for (size_t i = 0; i < iNviews; ++i)
   {
     size_t index0 = i;
@@ -315,9 +318,9 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_CompleteGraph_outliers)
   // (use a smaller weight since those rotations are less accurate)
   for (size_t i = 0; i < vec_relativeRotEstimate.size(); ++i)
   {
-    if( vec_relativeRotEstimate[i].i == 0 && vec_relativeRotEstimate[i].j == 1)
+    if (vec_relativeRotEstimate[i].i == 0 && vec_relativeRotEstimate[i].j == 1)
       vec_relativeRotEstimate[i] = RelativeRotation(0, 1, RotationAroundX(D2R(0.1)), 0.5);
-    if( vec_relativeRotEstimate[i].i == 2 && vec_relativeRotEstimate[i].j == 3)
+    if (vec_relativeRotEstimate[i].i == 2 && vec_relativeRotEstimate[i].j == 3)
       vec_relativeRotEstimate[i] = RelativeRotation(2, 3, RotationAroundX(D2R(0.6)), 0.5);
   }
 
@@ -343,7 +346,7 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_CompleteGraph_outliers)
   RelativeRotations vec_relativeRotEstimateTemp;
   for (size_t i = 0; i < vec_inliers.size(); ++i)
   {
-    if( vec_inliers[i] == 1)
+    if (vec_inliers[i] == 1)
       vec_relativeRotEstimateTemp.push_back(vec_relativeRotEstimate[i]);
   }
   vec_relativeRotEstimate.swap(vec_relativeRotEstimateTemp);
@@ -377,4 +380,3 @@ TEST ( rotation_averaging, RefineRotationsAvgL1IRLS_CompleteGraph_outliers)
 /* ************************************************************************* */
 int main() { TestResult tr; return TestRegistry::runAllTests(tr);}
 /* ************************************************************************* */
-

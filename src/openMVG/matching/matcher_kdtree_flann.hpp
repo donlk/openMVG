@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,11 +9,16 @@
 #ifndef OPENMVG_MATCHING_MATCHER_KDTREE_FLANN_HPP
 #define OPENMVG_MATCHING_MATCHER_KDTREE_FLANN_HPP
 
+#include <memory>
+#include <vector>
+
+#ifdef OPENMVG_USE_OPENMP
+#include <omp.h>
+#endif
+
 #include "openMVG/matching/matching_interface.hpp"
 
 #include <flann/flann.hpp>
-
-#include <memory>
 
 namespace openMVG {
 namespace matching  {
@@ -23,19 +30,15 @@ namespace matching  {
 // By default use squared L2 metric (flann::L2<Scalar>)
 // sqrt is monotonic so for performance reason we do not compute it.
 
-template < typename Scalar = float, typename  Metric = flann::L2<Scalar> >
+template < typename Scalar = float, typename  Metric = flann::L2<Scalar>>
 class ArrayMatcher_Kdtree_Flann : public ArrayMatcher<Scalar, Metric>
 {
   public:
   using DistanceType = typename Metric::ResultType;
 
-  ArrayMatcher_Kdtree_Flann() = default ;
+  ArrayMatcher_Kdtree_Flann() = default;
 
-  virtual ~ArrayMatcher_Kdtree_Flann()
-  {
-    datasetM_.reset();
-    index_.reset();
-  }
+  virtual ~ArrayMatcher_Kdtree_Flann() = default;
 
   /**
    * Build the matching structure
@@ -166,10 +169,10 @@ class ArrayMatcher_Kdtree_Flann : public ArrayMatcher<Scalar, Metric>
     }
   }
 
-  private :
+  private:
 
-  std::unique_ptr< flann::Matrix<Scalar> > datasetM_;
-  std::unique_ptr< flann::Index<Metric> > index_;
+  std::unique_ptr<flann::Matrix<Scalar>> datasetM_;
+  std::unique_ptr<flann::Index<Metric>> index_;
   std::size_t dimension_;
 };
 

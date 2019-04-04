@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2014 openMVG authors.
 
@@ -8,11 +9,10 @@
 #ifndef OPENMVG_COLOR_HARMONIZATION_SELECTION_INTERFACE_HPP
 #define OPENMVG_COLOR_HARMONIZATION_SELECTION_INTERFACE_HPP
 
-#include "openMVG/image/image.hpp"
-
-#include "third_party/histogram/histogram.hpp"
-
 #include <string>
+
+#include "openMVG/image/image_container.hpp"
+#include "third_party/histogram/histogram.hpp"
 
 namespace openMVG {
 namespace color_harmonization {
@@ -25,7 +25,7 @@ public:
     _sLeftImage( sLeftImage ), _sRightImage( sRightImage )
   {}
 
-  virtual ~commonDataByPair() = default ; 
+  virtual ~commonDataByPair() = default;
 
   /**
    * Compute mask forthe two images
@@ -33,9 +33,9 @@ public:
    * \param[out] maskLeft Mask of the left image (initialized to corresponding image size).
    * \param[out] maskRight  Mask of the right image (initialized to corresponding image size).
    *
-   * \return True if(mask not empty).
+   * \return True if (mask not empty).
    */
-  virtual bool computeMask( image::Image< unsigned char > & maskLeft, image::Image< unsigned char > & maskRight ) = 0;
+  virtual bool computeMask( image::Image<unsigned char> & maskLeft, image::Image<unsigned char> & maskRight ) = 0;
 
   /**
    * Compute Histogram for the color's masked data
@@ -46,18 +46,18 @@ public:
    * \param[out] histo  Histogram of the left image.
    *
    */
-  template< typename ImageType >
+  template<typename ImageType>
   static void computeHisto(
-    Histogram< double > & histo,
-    const image::Image< unsigned char >& mask,
+    Histogram<double> & histo,
+    const image::Image<unsigned char>& mask,
     size_t channelIndex,
     const image::Image< ImageType >& image )
   {
-    for( int j = 0; j < mask.Height(); ++j )
+    for (int j = 0; j < mask.Height(); ++j )
     {
-      for( int i = 0; i < mask.Width(); ++i )
+      for (int i = 0; i < mask.Width(); ++i )
       {
-        if( ( int )mask( j, i ) != 0 )
+        if (( int )mask( j, i ) != 0 )
         {
           histo.Add( image( j, i )( channelIndex ) );
         }

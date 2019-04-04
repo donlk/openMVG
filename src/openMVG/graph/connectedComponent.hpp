@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 openMVG authors.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,14 +9,16 @@
 #ifndef OPENMVG_GRAPH_CONNECTED_COMPONENT_HPP
 #define OPENMVG_GRAPH_CONNECTED_COMPONENT_HPP
 
+#include <lemon/connectivity.h>
+#include <lemon/list_graph.h>
+#include <limits>
+#include <map>
+#include <set>
+#include <utility>
+
 #include "openMVG/graph/graph_builder.hpp"
 #include "openMVG/tracks/union_find.hpp"
 #include "openMVG/types.hpp"
-
-#include <lemon/connectivity.h>
-#include <lemon/list_graph.h>
-
-#include <set>
 
 namespace openMVG
 {
@@ -28,7 +32,7 @@ namespace graph
 * @return Connected component of input graph
 */
 template <typename GraphT, typename IndexT>
-std::map<IndexT, std::set<lemon::ListGraph::Node> >  exportGraphToMapSubgraphs
+std::map<IndexT, std::set<lemon::ListGraph::Node>>  exportGraphToMapSubgraphs
 (
   const GraphT & g
 )
@@ -37,7 +41,7 @@ std::map<IndexT, std::set<lemon::ListGraph::Node> >  exportGraphToMapSubgraphs
   IndexMap connectedNodeMap( g );
   lemon::connectedComponents( g, connectedNodeMap );
 
-  std::map<IndexT, std::set<lemon::ListGraph::Node> > map_subgraphs;
+  std::map<IndexT, std::set<lemon::ListGraph::Node>> map_subgraphs;
 
   // Create subgraphs' map
   using NodeIterator = lemon::ListGraph::NodeIt;
@@ -190,7 +194,7 @@ std::set<IndexT> KeepLargestCC_Nodes
       for (const unsigned int parent_id_it : parent_id)
       {
         if (uf.m_cc_size[parent_id_it] > max_cc.second) // Update the component parent id and size
-          max_cc = std::make_pair(parent_id_it, uf.m_cc_size[parent_id_it]);
+          max_cc = {parent_id_it, uf.m_cc_size[parent_id_it]};
       }
     }
     if (max_cc.first != UndefinedIndexT)

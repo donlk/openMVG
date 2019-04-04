@@ -19,6 +19,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -29,9 +30,10 @@
 #ifndef OPENMVG_MULTIVIEW_TEST_DATA_SETS_HP
 #define OPENMVG_MULTIVIEW_TEST_DATA_SETS_HP
 
-#include "openMVG/numeric/numeric.h"
-
+#include <string>
 #include <vector>
+
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG {
 
@@ -72,12 +74,12 @@ struct nViewDatasetConfigurator
 
 /// Place cameras on a circle with point in the center
 NViewDataSet NRealisticCamerasRing(size_t nviews, size_t npoints,
-                                   const nViewDatasetConfigurator
+                                   const nViewDatasetConfigurator &
                                      config = nViewDatasetConfigurator());
 
 /// Place cameras on cardiod shape with point in the center
 NViewDataSet NRealisticCamerasCardioid(size_t nviews, size_t npoints,
-                                       const nViewDatasetConfigurator
+                                       const nViewDatasetConfigurator &
                                         config = nViewDatasetConfigurator());
 
 } // namespace openMVG

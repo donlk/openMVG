@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -16,7 +18,7 @@ namespace openMVG {
 namespace lInfinityCV {
 namespace kernel {
 
-using namespace linearProgramming ;
+using namespace linearProgramming;
 
 inline void translate
 (
@@ -51,7 +53,7 @@ void l1SixPointResectionSolver::Solve
   std::vector<double> vec_solution(11);
   OSI_CLP_SolverWrapper wrapperLpSolve(vec_solution.size());
   Resection_L1_ConstraintBuilder cstBuilder(pt2D, XPoints);
-  if(
+  if (
     (BisectionLP<Resection_L1_ConstraintBuilder, LP_Constraints_Sparse>(
     wrapperLpSolve,
     cstBuilder,

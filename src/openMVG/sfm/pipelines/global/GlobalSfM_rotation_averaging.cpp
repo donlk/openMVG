@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -9,7 +10,8 @@
 
 #include "openMVG/graph/graph.hpp"
 #include "openMVG/multiview/rotation_averaging.hpp"
-#include "openMVG/sfm/sfm.hpp"
+#include "openMVG/sfm/sfm_filters.hpp"
+#include "openMVG/sfm/pipelines/global/sfm_global_reindex.hpp"
 #include "openMVG/stl/stlMap.hpp"
 
 #include "third_party/histogram/histogram.hpp"
@@ -34,23 +36,24 @@ bool GlobalSfM_Rotation_AveragingSolver::Run(
   RelativeRotations relativeRotations = relativeRot_In;
   // We work on a copy, since inference can remove some relative motions
 
-  switch(eRelativeRotationInferenceMethod)
+  switch (eRelativeRotationInferenceMethod)
   {
-    case(TRIPLET_ROTATION_INFERENCE_NONE):
+    case TRIPLET_ROTATION_INFERENCE_NONE:
     break;
-    case(TRIPLET_ROTATION_INFERENCE_COMPOSITION_ERROR):
+    case TRIPLET_ROTATION_INFERENCE_COMPOSITION_ERROR:
     {
       //-------------------
       // Triplet inference (test over the composition error)
       //-------------------
       Pair_Set pairs = getPairs(relativeRotations);
-      std::vector< graph::Triplet > vec_triplets = graph::tripletListing(pairs);
+      std::vector<graph::Triplet> vec_triplets = graph::TripletListing(pairs);
+
       //-- Rejection triplet that are 'not' identity rotation (error to identity > 5°)
       TripletRotationRejection(5.0f, vec_triplets, relativeRotations);
 
       pairs = getPairs(relativeRotations);
       const std::set<IndexT> set_remainingIds = graph::CleanGraph_KeepLargestBiEdge_Nodes<Pair_Set, IndexT>(pairs);
-      if(set_remainingIds.empty())
+      if (set_remainingIds.empty())
         return false;
       KeepOnlyReferencedElement(set_remainingIds, relativeRotations);
     }
@@ -68,7 +71,7 @@ bool GlobalSfM_Rotation_AveragingSolver::Run(
   Hash_Map<IndexT, IndexT> reindexForward, reindexBackward;
   reindex(pairs, reindexForward, reindexBackward);
 
-  for(RelativeRotations::iterator iter = relativeRotations.begin();  iter != relativeRotations.end(); ++iter)
+  for (RelativeRotations::iterator iter = relativeRotations.begin();  iter != relativeRotations.end(); ++iter)
   {
     RelativeRotation & rel = *iter;
     rel.i = reindexForward[rel.i];
@@ -78,7 +81,7 @@ bool GlobalSfM_Rotation_AveragingSolver::Run(
   //- B. solve global rotation computation
   bool bSuccess = false;
   std::vector<Mat3> vec_globalR(reindexForward.size());
-  switch(eRotationAveragingMethod)
+  switch (eRotationAveragingMethod)
   {
     case ROTATION_AVERAGING_L2:
     {
@@ -94,7 +97,7 @@ bool GlobalSfM_Rotation_AveragingSolver::Run(
           vec_globalR);
 
       // save kept pairs (restore original pose indices using the backward reindexing)
-      for(RelativeRotations::iterator iter = relativeRotations.begin();  iter != relativeRotations.end(); ++iter)
+      for (RelativeRotations::iterator iter = relativeRotations.begin();  iter != relativeRotations.end(); ++iter)
       {
         RelativeRotation & rel = *iter;
         rel.i = reindexBackward[rel.i];
@@ -153,7 +156,7 @@ bool GlobalSfM_Rotation_AveragingSolver::Run(
 ///  angular error once rotation composition have been computed.
 void GlobalSfM_Rotation_AveragingSolver::TripletRotationRejection(
   const double max_angular_error,
-  std::vector< graph::Triplet > & vec_triplets,
+  std::vector<graph::Triplet> & vec_triplets,
   RelativeRotations & relativeRotations) const
 {
   const size_t edges_start_count = relativeRotations.size();
@@ -165,7 +168,7 @@ void GlobalSfM_Rotation_AveragingSolver::TripletRotationRejection(
   // ROTATION OUTLIERS DETECTION
   //--
 
-  std::vector< graph::Triplet > vec_triplets_validated;
+  std::vector<graph::Triplet> vec_triplets_validated;
   vec_triplets_validated.reserve(vec_triplets.size());
 
   std::vector<float> vec_errToIdentityPerTriplet;
@@ -218,19 +221,19 @@ void GlobalSfM_Rotation_AveragingSolver::TripletRotationRejection(
   // update to keep only useful triplets
   relativeRotations.clear();
   relativeRotations.reserve(map_relatives.size());
-  std::transform(map_relatives.begin(), map_relatives.end(), std::back_inserter(relativeRotations), stl::RetrieveValue());
-  std::transform(map_relatives.begin(), map_relatives.end(), std::inserter(used_pairs, used_pairs.begin()), stl::RetrieveKey());
+  std::transform(map_relatives.cbegin(), map_relatives.cend(), std::back_inserter(relativeRotations), stl::RetrieveValue());
+  std::transform(map_relatives.cbegin(), map_relatives.cend(), std::inserter(used_pairs, used_pairs.begin()), stl::RetrieveKey());
 
   // Display statistics about rotation triplets error:
   std::cout << "\nStatistics about rotation triplets:" << std::endl;
-  minMaxMeanMedian<float>(vec_errToIdentityPerTriplet.begin(), vec_errToIdentityPerTriplet.end());
+  minMaxMeanMedian<float>(vec_errToIdentityPerTriplet.cbegin(), vec_errToIdentityPerTriplet.cend());
 
   std::sort(vec_errToIdentityPerTriplet.begin(), vec_errToIdentityPerTriplet.end());
 
   if (!vec_errToIdentityPerTriplet.empty())
   {
-    Histogram<float> histo(0.0f, *max_element(vec_errToIdentityPerTriplet.begin(), vec_errToIdentityPerTriplet.end()), 20);
-    histo.Add(vec_errToIdentityPerTriplet.begin(), vec_errToIdentityPerTriplet.end());
+    Histogram<float> histo(0.0f, *max_element(vec_errToIdentityPerTriplet.cbegin(), vec_errToIdentityPerTriplet.cend()), 20);
+    histo.Add(vec_errToIdentityPerTriplet.cbegin(), vec_errToIdentityPerTriplet.cend());
     std::cout << histo.ToString() << std::endl;
   }
 
@@ -248,4 +251,3 @@ void GlobalSfM_Rotation_AveragingSolver::TripletRotationRejection(
 
 } // namespace sfm
 } // namespace openMVG
-

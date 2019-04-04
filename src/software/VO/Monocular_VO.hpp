@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2014 Pierre MOULON.
 
@@ -8,12 +9,17 @@
 #ifndef MONOCULAR_VO_HPP
 #define MONOCULAR_VO_HPP
 
-#include "openMVG/features/features.hpp"
-#include <openMVG/numeric/numeric.h>
-
-#include <software/VO/Abstract_Tracker.hpp>
 #include <deque>
 #include <set>
+#include <numeric>
+
+#include "openMVG/features/feature.hpp"
+#include "openMVG/image/image_container.hpp"
+#include "openMVG/numeric/eigen_alias_definition.hpp"
+
+#include "openMVG/sfm/sfm_landmark.hpp"
+
+#include "software/VO/Abstract_Tracker.hpp"
 
 namespace openMVG  {
 namespace VO  {
@@ -27,7 +33,7 @@ struct Measurement
     const Vec2f & p
   ): frameId_(frameId), pos_(p)
   { }
-  Measurement( const Measurement & src ) = default ;
+  Measurement( const Measurement & src ) = default;
 
   uint32_t frameId_;
   Vec2f pos_;
@@ -42,20 +48,41 @@ struct Landmark
   std::deque<Measurement> obs_;
 };
 
-/// Monocular test interface
+/// Function that converts VO landmark observations to the OpenMVG sfm landmark format.
+inline bool ConvertVOLandmarkToSfMDataLandmark
+(
+  const std::deque<openMVG::VO::Landmark> & vo_landmark,
+  openMVG::sfm::Landmarks & sfm_landmark
+)
+{
+  for (size_t idx = 0; idx < vo_landmark.size(); ++idx)
+  {
+    // Create a sfm_landmark
+    sfm::Landmark landmark;
+    sfm::Observations & obs = landmark.obs;
 
+    for (const auto & track_it : vo_landmark.at(idx).obs_)
+    {
+      obs[track_it.frameId_].x = track_it.pos_.cast<double>();
+    }
+    sfm_landmark.insert({idx, landmark});
+  }
+  return true;
+}
+
+/// Monocular test interface
 struct VO_Monocular
 {
   // Structure and visibility
   std::deque<Landmark> landmark_;
-  std::vector<uint64_t> trackedLandmarkIds_;
+  std::vector<uint32_t> trackedLandmarkIds_;
 
   // Landmark Id per frame (for easier pairing)
-  std::deque< std::set<uint32_t> > landmarkListPerFrame_;
+  std::deque<std::set<uint32_t>> landmarkListPerFrame_;
 
   // Tracking
   Abstract_Tracker * tracker_;
-  uint32_t maxTrackedFeatures_ ;
+  uint32_t maxTrackedFeatures_;
   std::vector<features::PointFeature> pt_to_track_, pt_tracked_;
   std::vector<bool> tracking_status_;
 
@@ -78,7 +105,7 @@ struct VO_Monocular
   {
     const bool bTrackerStatus = tracker_->track(ima, pt_to_track_, pt_tracked_, tracking_status_);
     std::cout << (int) bTrackerStatus  << " : tracker status" << std::endl;
-    landmarkListPerFrame_.push_back(std::set<uint32_t>());
+    landmarkListPerFrame_.emplace_back(std::set<uint32_t>());
     if (landmarkListPerFrame_.size()==1 || bTrackerStatus)
     {
       // Update landmark observation
@@ -92,20 +119,19 @@ struct VO_Monocular
       #endif
       for (int i = 0; i < (int)tracking_status_.size(); ++i)
       {
-        if (tracking_status_[i])
+        if (tracking_status_[i]) // if the feature has been tracked
         {
-          // if tracked
           const features::PointFeature & a = pt_to_track_[i];
           const features::PointFeature b = pt_tracked_[i];
-          // Use a spatial filter
-          if ((a.coords() - b.coords()).norm() < 25)
+          // Use a spatial filter to remove features that moved too much
+          if ((a.coords() - b.coords()).norm() < ima.Width()*.08)
           {
-            const uint64_t tracker_landmark_id = trackedLandmarkIds_[i];
+            const auto tracker_landmark_id = trackedLandmarkIds_[i];
             #ifdef OPENMVG_USE_OPENMP
             #pragma omp critical
             #endif
             {
-              landmark_[tracker_landmark_id].obs_.push_back(Measurement( frameId , b.coords() ) );
+              landmark_[tracker_landmark_id].obs_.emplace_back(frameId , b.coords());
               landmarkListPerFrame_.back().insert(tracker_landmark_id);
             }
             pt_to_track_[i] = b; // update the tracked point
@@ -122,7 +148,7 @@ struct VO_Monocular
       }
 
       // Count the number of tracked features
-      const size_t countTracked = std::accumulate(tracking_status_.begin(), tracking_status_.end(), 0);
+      const size_t countTracked = std::accumulate(tracking_status_.cbegin(), tracking_status_.cend(), 0);
       std::cout << "#tracked: " << countTracked << std::endl;
 
       // try compute pose and decide if it's a Keyframe
@@ -130,9 +156,10 @@ struct VO_Monocular
       {
         size_t lastKf = frameId-1;
         std::vector<uint32_t> ids;
+        ids.reserve(std::min(landmarkListPerFrame_[lastKf].size(), landmarkListPerFrame_[frameId].size()));
         std::set_intersection(
-          landmarkListPerFrame_[lastKf].begin(), landmarkListPerFrame_[lastKf].end(),
-          landmarkListPerFrame_[frameId].begin(), landmarkListPerFrame_[frameId].end(),
+          landmarkListPerFrame_[lastKf].cbegin(), landmarkListPerFrame_[lastKf].cend(),
+          landmarkListPerFrame_[frameId].cbegin(), landmarkListPerFrame_[frameId].cend(),
           std::back_inserter(ids));
         std::cout << "Track in common with the last Keyframe: " << ids.size() << std::endl;
       }
@@ -152,6 +179,7 @@ struct VO_Monocular
         // add some new feature
         const size_t count = maxTrackedFeatures_ - countTracked;
         std::vector<features::PointFeature> new_pt;
+        new_pt.reserve(maxTrackedFeatures_);
         if (tracker_->detect(ima, new_pt, count))
         {
           std::cout << "#features added: " << new_pt.size() << std::endl;

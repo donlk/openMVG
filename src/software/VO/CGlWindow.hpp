@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2014 Pierre MOULON.
 
@@ -23,7 +24,7 @@ struct CGlWindow
   GLFWwindow * _window;
   int _width, _height;
 
-  CGlWindow() : _window(NULL), _width(-1), _height(-1) { }
+  CGlWindow() : _window(NULL), _width(-1), _height(-1), _bRunning(false) { }
 
   bool Init(int w, int h, const std::string & sWindowName)
   {

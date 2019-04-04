@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,10 +9,14 @@
 #ifndef OPENMVG_SFM_SFM_MATCHES_PROVIDER_HPP
 #define OPENMVG_SFM_SFM_MATCHES_PROVIDER_HPP
 
+#include <string>
+
 #include "openMVG/matching/indMatch.hpp"
 #include "openMVG/matching/indMatch_utils.hpp"
 #include "openMVG/sfm/sfm_data.hpp"
 #include "openMVG/types.hpp"
+
+#include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 
 namespace openMVG {
 namespace sfm {

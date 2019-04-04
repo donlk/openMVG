@@ -25,6 +25,7 @@ openMVG provides solver for the following geometric estimation:
 
   * 8 to n pt (Direct Linear Transform) [HZ]_,
   * 5pt + intrinsic [Stewenius]_, [Nister]_.
+  * 3pt orthographic [Magnus]_.
 
 N-View geometry estimation
 ============================
@@ -123,7 +124,7 @@ It consists in estimating the camera parameters of the right camera that minimiz
 openMVG provides 3 different solvers for this problem:
 
 * 6pt Direct Linear Transform [HZ]_,
-* 4pt with intrinsic EPnP [EPnP]_,  
+* 3pt with intrinsic EPnP [Ke]_,  
 * 3pt with intrinsic P3P [Kneip]_.
 
 Kernel concept

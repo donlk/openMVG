@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -5,13 +7,11 @@
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 #include "openMVG/linearProgramming/linearProgrammingOSI_X.hpp"
-#include "openMVG/numeric/numeric.h"
-
-#include "OsiClpSolverInterface.hpp"
-#include "CoinPackedMatrix.hpp"
+#include <assert.h>
+#include <cstddef>
 #include "CoinPackedVector.hpp"
-
-#include <vector>
+#include "OsiClpSolverInterface.hpp"
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG   {
 namespace linearProgramming  {
@@ -24,7 +24,7 @@ OSI_X_SolverWrapper::OSI_X_SolverWrapper(int nbParams) : LP_Solver(nbParams)
 
 bool OSI_X_SolverWrapper::setup(const LP_Constraints & cstraints) //cstraints <-> constraints
 {
-  if ( si == nullptr )
+  if (!si)
   {
     return false;
   }
@@ -64,7 +64,7 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints & cstraints) //cstraints <-
         cstraints.vec_sign_[i] == LP_Constraints::LP_LESS_OR_EQUAL)
     {
       const int coef = 1;
-      for ( int j = 0; j < A.cols() ; ++j )
+      for ( int j = 0; j < A.cols(); ++j )
       {
         row.insert(j, coef * temp.data()[j]);
       }
@@ -77,7 +77,7 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints & cstraints) //cstraints <-
         cstraints.vec_sign_[i] == LP_Constraints::LP_GREATER_OR_EQUAL)
     {
       const int coef = -1;
-      for ( int j = 0; j < A.cols() ; ++j )
+      for ( int j = 0; j < A.cols(); ++j )
       {
         row.insert(j, coef * temp.data()[j]);
       }
@@ -103,14 +103,14 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints & cstraints) //cstraints <-
     }
   }
 
-  si->loadProblem(*matrix, &col_lb[0], &col_ub[0], cstraints.vec_cost_.empty() ? NULL : &cstraints.vec_cost_[0], &row_lb[0], &row_ub[0] );
+  si->loadProblem(*matrix, &col_lb[0], &col_ub[0], cstraints.vec_cost_.empty() ? nullptr : &cstraints.vec_cost_[0], &row_lb[0], &row_ub[0] );
 
   return true;
 }
 
 bool OSI_X_SolverWrapper::setup(const LP_Constraints_Sparse & cstraints) //cstraints <-> constraints
 {
-  if ( si == nullptr )
+  if (!si)
   {
     return false;
   }
@@ -166,11 +166,9 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints_Sparse & cstraints) //cstra
          cstraints.vec_sign_[i] == LP_Constraints::LP_GREATER_OR_EQUAL )
     {
       const int coef = -1;
-      for ( std::vector<double>::iterator iter_val = vec_value.begin();
-        iter_val != vec_value.end();
-        iter_val++)
+      for (auto &  iter_val : vec_value)
       {
-        *iter_val *= coef;
+        iter_val *= coef;
       }
       row_ub[rowindex] = coef * cstraints.constraint_objective_(i);
       matrix->appendRow( vec_colno.size(),
@@ -187,7 +185,7 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints_Sparse & cstraints) //cstra
     std::fill(col_lb.begin(), col_lb.end(), cstraints.vec_bounds_[0].first);
     std::fill(col_ub.begin(), col_ub.end(), cstraints.vec_bounds_[0].second);
   }
-  else  // each parameter have it's own bounds
+  else  // each parameter have its own bounds
   {
     for (int i=0; i < this->nbParams_; ++i)
     {
@@ -200,7 +198,7 @@ bool OSI_X_SolverWrapper::setup(const LP_Constraints_Sparse & cstraints) //cstra
     *matrix,
     &col_lb[0],
     &col_ub[0],
-    cstraints.vec_cost_.empty() ? NULL : &cstraints.vec_cost_[0],
+    cstraints.vec_cost_.empty() ? nullptr : &cstraints.vec_cost_[0],
     &row_lb[0],
     &row_ub[0]);
 
@@ -226,7 +224,7 @@ bool OSI_X_SolverWrapper::getSolution(std::vector<double> & estimatedParams)
   if ( si )
   {
     const int n = si->getNumCols();
-    memcpy(&estimatedParams[0], si->getColSolution(), n * sizeof(double));
+    std::memcpy(&estimatedParams[0], si->getColSolution(), n * sizeof(double));
     return true;
   }
   return false;

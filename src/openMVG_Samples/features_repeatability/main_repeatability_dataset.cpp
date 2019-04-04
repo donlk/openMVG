@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -5,11 +6,12 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include "openMVG/image/image.hpp"
-#include "openMVG/features/features.hpp"
-#include "openMVG/robust_estimation/guided_matching.hpp"
-#include "openMVG/multiview/solver_homography_kernel.hpp"
+#include "openMVG/features/feature.hpp"
+#include "openMVG/features/akaze/image_describer_akaze.hpp"
+#include "openMVG/image/image_io.hpp"
 #include "openMVG/matching/regions_matcher.hpp"
+#include "openMVG/multiview/solver_homography_kernel.hpp"
+#include "openMVG/robust_estimation/guided_matching.hpp"
 
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 #include "third_party/cmdLine/cmdLine.h"
@@ -31,9 +33,11 @@ using namespace std;
 class RepeatabilityDataset
 {
 public:
-  RepeatabilityDataset
-    (const std::string& folderPath)
-    : folderPath_(folderPath)
+  explicit RepeatabilityDataset
+  (
+    const std::string& folderPath
+  ):
+    folderPath_(folderPath)
   {
     loadImages();
     loadGroundTruthHs();
@@ -127,7 +131,7 @@ private:
 private:
   std::string folderPath_;
 
-  std::vector<image::Image<RGBColor> > vec_image_;
+  std::vector<image::Image<RGBColor>> vec_image_;
   std::vector<Mat3> vec_H_;
 };
 
@@ -147,7 +151,7 @@ void PointsToMat(
   m0.resize(2, matches.size());
   m1.resize(2, matches.size());
 
-  for( size_t i = 0; i < matches.size(); ++i)
+  for (size_t i = 0; i < matches.size(); ++i)
   {
     const ValueT & feat0 = vec_feats0[matches[i].i_];
     m0.col(i) << feat0.x(), feat0.y();
@@ -158,15 +162,15 @@ void PointsToMat(
 
 struct RepeatabilityResults_Matching
 {
-  std::map< std::string, std::vector<double> > results;
+  std::map<std::string, std::vector<double>> results;
 
   bool exportToFile(const std::string & sFile, const std::string & sdatasetName) const
   {
     std::ofstream ofs(sFile, std::ofstream::out | std::ofstream::app);
 
-    if( ! ofs.good() )
+    if ( ! ofs.good() )
     {
-        return false ;
+        return false;
     }
 
     ofs << sdatasetName << "\n";
@@ -180,14 +184,14 @@ struct RepeatabilityResults_Matching
     }
     ofs.close();
 
-    return true ;
+    return true;
   }
 };
 
 features::EDESCRIBER_PRESET stringToEnum(const std::string & sPreset)
 {
   features::EDESCRIBER_PRESET preset;
-  if(sPreset == "NORMAL")
+  if (sPreset == "NORMAL")
     preset = features::NORMAL_PRESET;
   else
   if (sPreset == "HIGH")
@@ -228,7 +232,7 @@ int main(int argc, char **argv)
   try {
       if (argc == 1) throw std::string("Invalid command line parameter.");
       cmd.process(argc, argv);
-  } catch(const std::string& s) {
+  } catch (const std::string& s) {
       std::cerr << "Usage: " << argv[0] << '\n'
       << "[-i|--input_dataset] the path to the datasets \n"
       << "\n[Optional]\n"
@@ -299,8 +303,8 @@ int main(int argc, char **argv)
       else
       if (sImage_Describer_Method == "AKAZE_FLOAT")
       {
-        image_describer.reset(new AKAZE_Image_describer
-          (AKAZE_Image_describer::Params(AKAZE::Params(), AKAZE_MSURF)));
+        image_describer = AKAZE_Image_describer::create
+          (AKAZE_Image_describer::Params(AKAZE::Params(), AKAZE_MSURF));
       }
 
       if (!image_describer)
@@ -320,7 +324,7 @@ int main(int argc, char **argv)
 
       // For each image computes the regions:
       image::Image<unsigned char> imageGray;
-      Hash_Map<IndexT, std::unique_ptr<Regions> > map_regions;
+      Hash_Map<IndexT, std::unique_ptr<Regions>> map_regions;
       for (size_t i = 0; i < dataset.size(); ++i)
       {
         image::ConvertPixelType(dataset.image(i), &imageGray);

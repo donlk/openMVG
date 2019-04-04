@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2015 Pierre Moulon.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -37,25 +39,14 @@ namespace cameras
 enum EINTRINSIC
 {
   PINHOLE_CAMERA_START = 0,
-  PINHOLE_CAMERA = 1,         // No distortion
-  PINHOLE_CAMERA_RADIAL1 = 2, // radial distortion K1
-  PINHOLE_CAMERA_RADIAL3 = 3, // radial distortion K1,K2,K3
-  PINHOLE_CAMERA_BROWN = 4, // radial distortion K1,K2,K3, tangential distortion T1,T2
-  PINHOLE_CAMERA_FISHEYE = 5, // a simple Fish-eye distortion model with 4 distortion coefficients
-  PINHOLE_CAMERA_END
+  PINHOLE_CAMERA,         // No distortion
+  PINHOLE_CAMERA_RADIAL1, // radial distortion K1
+  PINHOLE_CAMERA_RADIAL3, // radial distortion K1,K2,K3
+  PINHOLE_CAMERA_BROWN, // radial distortion K1,K2,K3, tangential distortion T1,T2
+  PINHOLE_CAMERA_FISHEYE, // a simple Fish-eye distortion model with 4 distortion coefficients
+  PINHOLE_CAMERA_END,
+  CAMERA_SPHERICAL = PINHOLE_CAMERA_END + 1
 };
-
-
-/**
-* @brief Test if given intrinsic value is valid
-* @param eintrinsic Intrinsic value to test
-* @retval true if parameter is valid
-* @retval false if parameter is invalid
-*/
-static inline bool isValid( EINTRINSIC eintrinsic )
-{
-  return eintrinsic > PINHOLE_CAMERA_START && eintrinsic < PINHOLE_CAMERA_END;
-}
 
 /**
 * @brief test if given intrinsic value corresponds to a pinhole
@@ -66,6 +57,22 @@ static inline bool isValid( EINTRINSIC eintrinsic )
 static inline bool isPinhole( EINTRINSIC eintrinsic )
 {
   return eintrinsic > PINHOLE_CAMERA_START && eintrinsic < PINHOLE_CAMERA_END;
+}
+
+static inline bool isSpherical( EINTRINSIC eintrinsic )
+{
+  return eintrinsic == CAMERA_SPHERICAL;
+}
+
+/**
+* @brief Test if given intrinsic value is valid
+* @param eintrinsic Intrinsic value to test
+* @retval true if parameter is valid
+* @retval false if parameter is invalid
+*/
+static inline bool isValid( EINTRINSIC eintrinsic )
+{
+  return isPinhole(eintrinsic) || isSpherical(eintrinsic);
 }
 
 /**
@@ -84,10 +91,11 @@ static inline bool isPinhole( EINTRINSIC eintrinsic )
 */
 enum class Intrinsic_Parameter_Type : int
 {
-  NONE                    = 0x01, // All parameters will be held constant
-  ADJUST_FOCAL_LENGTH     = 0x02,
-  ADJUST_PRINCIPAL_POINT  = 0x04,
-  ADJUST_DISTORTION       = 0x08,
+  // Note: Use power of two values in order to use bitwise operators.
+  NONE                    = 1, // All parameters will be held constant
+  ADJUST_FOCAL_LENGTH     = 2,
+  ADJUST_PRINCIPAL_POINT  = 4,
+  ADJUST_DISTORTION       = 8,
   ADJUST_ALL = ADJUST_FOCAL_LENGTH | ADJUST_PRINCIPAL_POINT | ADJUST_DISTORTION
 };
 
@@ -95,16 +103,16 @@ inline constexpr Intrinsic_Parameter_Type
 operator|(Intrinsic_Parameter_Type x, Intrinsic_Parameter_Type y)
 {
   return static_cast<Intrinsic_Parameter_Type>
-    (static_cast<typename std::underlying_type<Intrinsic_Parameter_Type>::type>(x) |
-     static_cast<typename std::underlying_type<Intrinsic_Parameter_Type>::type>(y));
+    (static_cast<std::underlying_type<Intrinsic_Parameter_Type>::type>(x) |
+     static_cast<std::underlying_type<Intrinsic_Parameter_Type>::type>(y));
 }
 
 inline constexpr Intrinsic_Parameter_Type
 operator&(Intrinsic_Parameter_Type x, Intrinsic_Parameter_Type y)
 {
   return static_cast<Intrinsic_Parameter_Type>
-    (static_cast<typename std::underlying_type<Intrinsic_Parameter_Type>::type>(x) &
-     static_cast<typename std::underlying_type<Intrinsic_Parameter_Type>::type>(y));
+    (static_cast<std::underlying_type<Intrinsic_Parameter_Type>::type>(x) &
+     static_cast<std::underlying_type<Intrinsic_Parameter_Type>::type>(y));
 }
 
 } // namespace cameras

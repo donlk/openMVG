@@ -19,6 +19,7 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -41,30 +42,29 @@
 #ifndef OPENMVG_MULTIVIEW_SOLVER_ESSENTIAL_FIVE_POINT_HPP
 #define OPENMVG_MULTIVIEW_SOLVER_ESSENTIAL_FIVE_POINT_HPP
 
-#include "openMVG/numeric/numeric.h"
-
 #include <vector>
 
-namespace openMVG
-{
+#include "openMVG/numeric/eigen_alias_definition.hpp"
+
+namespace openMVG {
 
 /**
  * @brief Computes the relative pose of two calibrated cameras from 5 correspondences.
  *
- * \param x1 Points in the first image.  One per column.
- * \param x2 Corresponding points in the second image. One per column.
+ * \param x1 Corresponding bearing vectors in the first image. One per column.
+ * \param x2 Corresponding bearing vectors in the second image. One per column.
  * \param E  A list of at most 10 candidate essential matrix solutions.
  */
-void FivePointsRelativePose( const Mat2X &x1, const Mat2X &x2,
+void FivePointsRelativePose( const Mat3X &x1, const Mat3X &x2,
                              std::vector<Mat3> *E );
 
 /**
 * @brief Compute the nullspace of the linear constraints given by the matches.
-* @param x1 Match position in first camera
-* @param x2 Match position in second camera
-* @return Nullspace (homography) that maps x1 points to x2 points
+* @param x1 Corresponding bearing vectors in first camera
+* @param x2 Corresponding bearing vectors in second camera
+* @return Nullspace that maps x1 points to x2 points
 */
-Mat FivePointsNullspaceBasis( const Mat2X &x1, const Mat2X &x2 );
+Mat FivePointsNullspaceBasis( const Mat3X &x1, const Mat3X &x2 );
 
 /**
 * @brief Multiply two polynomials of degree 1.
@@ -81,7 +81,7 @@ Mat FivePointsNullspaceBasis( const Mat2X &x1, const Mat2X &x2 );
         a2b2 x^2 +
         a3b3 y^2 +
         a4b4 z^2
-* @note Ordering is defined as follow :
+* @note Ordering is defined as follow:
 * [xxx xxy xyy yyy xxz xyz yyz xzz yzz zzz xx xy yy xz yz zz x y z 1]
 */
 Vec o1( const Vec &a, const Vec &b );
@@ -114,7 +114,7 @@ Mat FivePointsPolynomialConstraints( const Mat &E_basis );
 //  [xxx xxy xxz xyy xyz xzz yyy yyz yzz zzz xx xy xz yy yz zz x y z 1]
 //
 // But this is not the basis used in the rest of the paper, neither in
-// the code they provide.  I (pau) have spend 4 hours debugging and
+// the code they provide. I (pau) have spend 4 hours debugging and
 // reverse engineering their code to find the problem. :(
 enum
 {
@@ -143,4 +143,3 @@ enum
 } // namespace openMVG
 
 #endif // OPENMVG_MULTIVIEW_SOLVER_ESSENTIAL_FIVE_POINT_HPP
-

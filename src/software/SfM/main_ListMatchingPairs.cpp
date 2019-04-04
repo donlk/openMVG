@@ -1,23 +1,28 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2016 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#include <cstdlib>
-
-#include "openMVG/sfm/sfm.hpp"
 #include "openMVG/matching/matcher_brute_force.hpp"
 #include "openMVG/matching_image_collection/Pair_Builder.hpp"
+#include "openMVG/sfm/sfm_data.hpp"
+#include "openMVG/sfm/sfm_data_io.hpp"
 #include "openMVG/system/timer.hpp"
 
-using namespace openMVG;
-using namespace openMVG::sfm;
-
 #include "third_party/cmdLine/cmdLine.h"
-#include "third_party/progress/progress.hpp"
+#include "third_party/progress/progress_display.hpp"
 #include "third_party/stlplus3/filesystemSimplified/file_system.hpp"
 #include "third_party/vectorGraphics/svgDrawer.hpp"
+
+#include <cstdlib>
+#include <string>
+
+using namespace openMVG;
+using namespace openMVG::matching;
+using namespace openMVG::sfm;
 
 enum ePairMode
 {
@@ -103,7 +108,7 @@ int main(int argc, char **argv)
   try {
     if (argc == 1) throw std::string("Invalid parameter.");
     cmd.process(argc, argv);
-  } catch(const std::string& s) {
+  } catch (const std::string& s) {
     std::cerr << "Usage: " << argv[0] << '\n'
     << "[-i|--input_file] path to a SfM_Data scene\n"
     << "[-o|--output_file] the output pairlist file (i.e ./pair_list.txt)\n"
@@ -238,27 +243,27 @@ int main(int argc, char **argv)
           << std::endl;
       }
       // Compute i_neighbor_count neighbor(s) for each pose
+      matching::ArrayMatcherBruteForce<double> matcher;
+      if (!matcher.Build(vec_pose_centers[0].data(), vec_pose_centers.size(), 3))
+      {
+        return EXIT_FAILURE;
+      }
       size_t contiguous_pose_id = 0;
       for (const Vec3 pose_it : vec_pose_centers)
       {
-        matching::ArrayMatcherBruteForce<double> matcher;
-        if (matcher.Build(vec_pose_centers[0].data(), vec_pose_centers.size(), 3))
+        const double * query = pose_it.data();
+        IndMatches vec_indices;
+        std::vector<double> vec_distance;
+        const int NN = i_neighbor_count + 1; // since itself will be found
+        if (matcher.SearchNeighbours(query, 1, &vec_indices, &vec_distance, NN))
         {
-          const double * query = pose_it.data();
-
-          IndMatches vec_indices;
-          std::vector<double> vec_distance;
-          const int NN = i_neighbor_count + 1; // since itself will be found
-          if (matcher.SearchNeighbours(query, 1, &vec_indices, &vec_distance, NN))
+          for (size_t i = 1; i < vec_indices.size(); ++i)
           {
-            for (size_t i = 1; i < vec_indices.size(); ++i)
-            {
-              IndexT idxI = contiguous_to_pose_id.at(contiguous_pose_id);
-              IndexT idxJ = contiguous_to_pose_id.at(vec_indices[i].j_);
-              if (idxI > idxJ)
-                std::swap(idxI, idxJ);
-              pose_pairs.insert(Pair(idxI, idxJ));
-            }
+            IndexT idxI = contiguous_to_pose_id.at(contiguous_pose_id);
+            IndexT idxJ = contiguous_to_pose_id.at(vec_indices[i].j_);
+            if (idxI > idxJ)
+              std::swap(idxI, idxJ);
+            pose_pairs.insert(Pair(idxI, idxJ));
           }
         }
         ++contiguous_pose_id;
@@ -301,9 +306,9 @@ int main(int argc, char **argv)
 
   // d. Export the view graph to a file and a SVG adjacency list
 
-  AdjacencyMatrixToSVG(sfm_data.GetViews().size(), view_pair, 
+  AdjacencyMatrixToSVG(sfm_data.GetViews().size(), view_pair,
     stlplus::create_filespec(
-      stlplus::folder_part(s_out_file), 
+      stlplus::folder_part(s_out_file),
       stlplus::filename_part(s_out_file), "svg"));
 
   if (savePairs(s_out_file, view_pair))
@@ -316,4 +321,3 @@ int main(int argc, char **argv)
 
   return EXIT_FAILURE;
 }
-

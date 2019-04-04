@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013, 2014 Pierre MOULON.
 
@@ -5,10 +6,8 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-#ifndef OPENMVG_GRAPH_GRAPH_EXPORT_HPP 
+#ifndef OPENMVG_GRAPH_GRAPH_EXPORT_HPP
 #define OPENMVG_GRAPH_GRAPH_EXPORT_HPP
-
-#include "openMVG/types.hpp"
 
 #include <lemon/list_graph.h>
 
@@ -16,6 +15,13 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <string>
+
+#if __APPLE__
+#include "TargetConditionals.h"
+#endif
+
+#include "openMVG/types.hpp"
 
 namespace openMVG {
 namespace graph {
@@ -75,8 +81,10 @@ inline void exportToGraphvizData
 
   //Use Graphviz
   const std::string cmd = "neato -Tsvg -O -Goverlap=scale -Gsplines=false " + sfile;
-  int ret = std::system(cmd.c_str());
+#ifndef TARGET_OS_IPHONE
+  const int ret = std::system(cmd.c_str());
   (void)ret;
+#endif
 }
 
 } // namespace graph

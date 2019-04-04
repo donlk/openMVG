@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2013, 2014 openMVG authors.
 
@@ -8,8 +9,8 @@
 #ifndef OPENMVG_COLOR_HARMONIZATION_ENGINE_GLOBAL_H
 #define OPENMVG_COLOR_HARMONIZATION_ENGINE_GLOBAL_H
 
-#include <openMVG/numeric/numeric.h>
-#include <openMVG/features/features.hpp>
+#include <openMVG/numeric/eigen_alias_definition.hpp>
+#include <openMVG/features/feature.hpp>
 #include <openMVG/tracks/tracks.hpp>
 
 #include <memory>
@@ -40,9 +41,9 @@ private:
 
 public:
 
-  const std::vector< std::string > & getFilenamesVector() const { return _vec_fileNames; }
+  const std::vector<std::string> & getFilenamesVector() const { return _vec_fileNames; }
 
-  const std::vector< std::pair< size_t, size_t > > & getImagesSize() const { return _vec_imageSize; }
+  const std::vector<std::pair<size_t, size_t>> & getImagesSize() const { return _vec_imageSize; }
 
 private:
 
@@ -54,10 +55,10 @@ private:
   // Input data
   // ----
 
-  std::vector< std::string > _vec_fileNames; // considered images
-  std::map< size_t, std::vector< features::SIOPointFeature > > _map_feats; // feature per images
+  std::vector<std::string> _vec_fileNames; // considered images
+  std::map<size_t, std::vector<features::SIOPointFeature>> _map_feats; // feature per images
 
-  std::vector< std::pair< size_t, size_t > > _vec_imageSize; // Size of each image
+  std::vector<std::pair<size_t, size_t>> _vec_imageSize; // Size of each image
 
   openMVG::matching::PairWiseMatches _map_Matches; // pairwise geometric matches
 

@@ -32,7 +32,6 @@ This projection of the camera is described as:
    &  &  & t_x \\
    & R_{3 \times 3} &  & t_y \\
     &  &  & t_z \\
-    0 & 0 & 0 & 1\\
   \end{bmatrix}
 
 
@@ -66,7 +65,6 @@ A 3D point is projected in a image with the following formula (homogeneous coord
    &  &  & t_x \\
    & R_{3 \times 3} &  & t_y \\
    &  &  & t_z \\
-   0 & 0 & 0 & 1\\
   \end{bmatrix}
   \begin{bmatrix}
   X_i\\
@@ -117,3 +115,10 @@ OpenMVG Pinhole camera models
        0, 1000, 500,
        0, 0, 1;
   PinholeCamera cam(K, Mat3::Identity(), Vec3::Zero());
+
+OpenMVG Spherical camera models
+-------------------------------
+
+* :class:`Intrinsic_Spherical : public IntrinsicBase` 
+
+    * a camera model for equirectangular panorama (360x180 degree). No focal is required, the camera is modelized as a unit sphere.

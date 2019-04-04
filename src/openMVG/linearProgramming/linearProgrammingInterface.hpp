@@ -1,3 +1,5 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -7,10 +9,10 @@
 #ifndef OPENMVG_LINEAR_PROGRAMMING_INTERFACE_HPP
 #define OPENMVG_LINEAR_PROGRAMMING_INTERFACE_HPP
 
-#include "openMVG/numeric/numeric.h"
-
 #include <utility>
 #include <vector>
+
+#include "openMVG/numeric/eigen_alias_definition.hpp"
 
 namespace openMVG   {
 namespace linearProgramming  {
@@ -28,19 +30,21 @@ struct LP_Constraints
   {
     LP_LESS_OR_EQUAL    = 1,  // (<=)
     LP_GREATER_OR_EQUAL = 2,  // (>=)
-    LP_EQUAL            = 3,  // (=)
-    LP_FREE             = 4   //only supported in MOSEK
+    LP_EQUAL            = 3   // (=)
   };
 
-  LP_Constraints() {
-    bminimize_ = false;
+  LP_Constraints():
+    nbParams_(0),
+    bminimize_(false)
+  {
+
   }
 
   int nbParams_; // The number of parameter/variable in constraint.
   Mat constraint_mat_; // Constraint under Matrix form.
   Vec constraint_objective_; // Constraint objective value.
   std::vector<eLP_SIGN> vec_sign_; // Constraint sign.
-  std::vector< std::pair<double, double> > vec_bounds_; // parameter/variable bounds.
+  std::vector<std::pair<double, double>> vec_bounds_; // parameter/variable bounds.
 
   bool bminimize_; // minimize is true or maximize is false.
   std::vector<double> vec_cost_; // Objective function
@@ -55,13 +59,15 @@ struct LP_Constraints
 ///
 struct LP_Constraints_Sparse
 {
-  LP_Constraints_Sparse() {
-    bminimize_ = false;
+  LP_Constraints_Sparse():
+    nbParams_(0),
+    bminimize_(false)
+  {
   }
 
   // Variable part
   int nbParams_; // The number of parameter/variable in constraint.
-  std::vector< std::pair<double, double> > vec_bounds_; // parameter/variable bounds.
+  std::vector<std::pair<double, double>> vec_bounds_; // parameter/variable bounds.
 
   // Constraint part
   sRMat constraint_mat_; // Constraint under Matrix form.
@@ -79,7 +85,7 @@ class LP_Solver
 {
 public:
 
-  LP_Solver(int nbParams):nbParams_(nbParams){};
+  explicit LP_Solver(int nbParams): nbParams_(nbParams){}
 
   /// Setup constraint for the given library.
   virtual bool setup(const LP_Constraints & constraints) = 0;

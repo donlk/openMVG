@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
@@ -8,14 +9,13 @@
 #ifndef OPENMVG_MATCHING_IND_MATCH_HPP
 #define OPENMVG_MATCHING_IND_MATCH_HPP
 
-#include "openMVG/types.hpp"
-
-#include <cereal/cereal.hpp> // Serialization
-
 #include <iostream>
 #include <map>
 #include <set>
+#include <utility>
 #include <vector>
+
+#include "openMVG/types.hpp"
 
 namespace openMVG {
 namespace matching {
@@ -50,9 +50,7 @@ struct IndMatch
 
   // Serialization
   template <class Archive>
-  void serialize( Archive & ar )  {
-    ar(i_, j_);
-  }
+  void serialize( Archive & ar );
 
   IndexT i_, j_;  // Left, right index
 };
@@ -72,7 +70,7 @@ using IndMatches = std::vector<matching::IndMatch>;
 class PairWiseMatchesContainer
 {
 public:
-  virtual ~PairWiseMatchesContainer() {}
+  virtual ~PairWiseMatchesContainer() = default;
   virtual void insert(std::pair<Pair, IndMatches>&& pairWiseMatches) = 0;
 };
 
@@ -81,18 +79,18 @@ public:
 /// A structure used to store corresponding point indexes per images pairs
 struct PairWiseMatches :
   public PairWiseMatchesContainer,
-  public std::map< Pair, IndMatches >
+  public std::map<Pair, IndMatches>
 {
   void insert(std::pair<Pair, IndMatches> && pairWiseMatches)override
   {
-    std::map< Pair, IndMatches >::insert(
+    std::map<Pair, IndMatches>::insert(
       std::forward<std::pair<Pair, IndMatches>>(pairWiseMatches));
   }
 
   // Serialization
   template <class Archive>
   void serialize( Archive & ar )  {
-    ar(static_cast<std::map< Pair, IndMatches >&>(*this));
+    ar(static_cast<std::map<Pair, IndMatches>&>(*this));
   }
 };
 
@@ -107,15 +105,5 @@ inline Pair_Set getPairs(const PairWiseMatches & matches)
 }  // namespace matching
 }  // namespace openMVG
 
-namespace cereal
-{
-  // This struct specialization will tell cereal which is the right way to serialize PairWiseMatches
-  template <class Archive>
-  struct specialize<
-    Archive,
-    openMVG::matching::PairWiseMatches,
-    cereal::specialization::member_serialize>
-  {};
-} // namespace cereal 
 
 #endif // OPENMVG_MATCHING_IND_MATCH_HPP

@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2015 Pierre MOULON.
 
@@ -8,10 +9,10 @@
 #ifndef OPENMVG_SFM_SFM_ENGINE_HPP
 #define OPENMVG_SFM_SFM_ENGINE_HPP
 
+#include <string>
+
 #include "openMVG/cameras/Camera_Common.hpp"
 #include "openMVG/sfm/sfm_data.hpp"
-
-#include <string>
 
 namespace openMVG {
 namespace sfm {
@@ -29,11 +30,12 @@ public:
   )
   :sOut_directory_(soutDirectory),
     sfm_data_(sfm_data),
-    intrinsic_refinement_options_(cameras::Intrinsic_Parameter_Type::ADJUST_ALL)
+    intrinsic_refinement_options_(cameras::Intrinsic_Parameter_Type::ADJUST_ALL),
+    b_use_motion_prior_(false)
   {
   }
 
-  virtual ~ReconstructionEngine() {}
+  virtual ~ReconstructionEngine() = default;
 
   virtual bool Process() = 0;
 

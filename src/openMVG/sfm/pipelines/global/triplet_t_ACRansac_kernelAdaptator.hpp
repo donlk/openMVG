@@ -1,3 +1,4 @@
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
 // Copyright (c) 2012, 2013, 2014 Pierre MOULON.
 
@@ -8,13 +9,13 @@
 #ifndef OPENMVG_GLOBAL_SFM_ENGINE_TRIPLET_T_ESTIMATOR_HPP
 #define OPENMVG_GLOBAL_SFM_ENGINE_TRIPLET_T_ESTIMATOR_HPP
 
+#include <vector>
+
 #include "openMVG/multiview/conditioning.hpp"
 #include "openMVG/numeric/numeric.h"
 
 namespace openMVG{
 namespace sfm{
-
-using namespace openMVG::trifocal::kernel;
 
 /// AContrario Kernel to solve a translation triplet & structure problem
 template <typename SolverArg,
@@ -58,8 +59,7 @@ public:
   void Fit(const std::vector<uint32_t> &samples, std::vector<Model> *models) const {
 
     // Create a model from the points
-    Solver::Solve(
-                  ExtractColumns(x1n_, samples),
+    Solver::Solve(ExtractColumns(x1n_, samples),
                   ExtractColumns(x2n_, samples),
                   ExtractColumns(x3n_, samples),
                   vec_KR_, models, ThresholdUpperBound_);

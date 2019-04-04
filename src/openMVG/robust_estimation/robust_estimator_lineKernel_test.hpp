@@ -19,6 +19,8 @@
 // FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 // IN THE SOFTWARE.
 
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
+
 // Copyright (c) 2012, 2013 Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
@@ -28,7 +30,9 @@
 #ifndef OPENMVG_ROBUST_ESTIMATION_LINEKERNEL_TEST_HPP
 #define OPENMVG_ROBUST_ESTIMATION_LINEKERNEL_TEST_HPP
 
-#include "openMVG/numeric/numeric.h"
+#include <vector>
+
+#include "openMVG/numeric/extract_columns.hpp"
 
 namespace openMVG {
 namespace robust{
@@ -65,7 +69,7 @@ struct LineKernel {
   using Model =  Vec2;  // line parametrization: a, b;
   enum { MINIMUM_SAMPLES = 2 };
 
-  LineKernel(const Mat2X &xs) : xs_(xs) {}
+  explicit LineKernel(const Mat2X &xs) : xs_(xs) {}
 
   size_t NumSamples() const { return static_cast<size_t> (xs_.cols()); }
 

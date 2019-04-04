@@ -1,31 +1,6 @@
-//  Copyright (c) 2014, Kyle Wilson
-//  All rights reserved.
-//
-//  Redistribution and use in source and binary forms, with or without
-//  modification, are permitted provided that the following conditions are met:
-//
-//  1. Redistributions of source code must retain the above copyright notice, this
-//  list of conditions and the following disclaimer.
-//  2. Redistributions in binary form must reproduce the above copyright notice,
-//  this list of conditions and the following disclaimer in the documentation
-//  and/or other materials provided with the distribution.
-//
-//  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-//  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-//  DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
-//  ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-//  (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
-//  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
-//  ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-//  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-//  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-//  The views and conclusions contained in the software and documentation are those
-//  of the authors and should not be interpreted as representing official policies,
-//  either expressed or implied, of the FreeBSD Project.
+// This file is part of OpenMVG, an Open Multiple View Geometry C++ library.
 
-// Copyright (c) 2014 Pierre MOULON.
+// Copyright (c) 2014, Kyle Wilson, Pierre MOULON.
 
 // This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -34,12 +9,13 @@
 #include "openMVG/multiview/translation_averaging_common.hpp"
 #include "openMVG/multiview/translation_averaging_solver.hpp"
 
-#include <ceres/ceres.h>
-
 #include <ctime>
-#include <map>
-#include <set>
-#include <vector>
+
+#ifdef OPENMVG_USE_OPENMP
+#include <omp.h>
+#endif
+
+#include <ceres/ceres.h>
 
 namespace openMVG {
 
@@ -88,7 +64,7 @@ bool solve_translations_problem_l2_chordal
 )
 {
   // seed the random number generator
-  std::srand( std::time( NULL ) );
+  std::srand( std::time( nullptr ) );
 
   // re index the edges to be a sequential set
   std::vector<int> reindexed_edges(edges, edges+2*num_edges);
@@ -114,7 +90,7 @@ bool solve_translations_problem_l2_chordal
 
     if (loss_width == 0.0) {
       // No robust loss function
-      problem.AddResidualBlock(cost_function, NULL, &x[3*reindexed_edges[2*i+0]], &x[3*reindexed_edges[2*i+1]]);
+      problem.AddResidualBlock(cost_function, nullptr, &x[3*reindexed_edges[2*i+0]], &x[3*reindexed_edges[2*i+1]]);
     } else {
       problem.AddResidualBlock(cost_function, new ceres::HuberLoss(loss_width), &x[3*reindexed_edges[2*i+0]], &x[3*reindexed_edges[2*i+1]]);
     }
@@ -128,14 +104,16 @@ bool solve_translations_problem_l2_chordal
   Solver::Options options;
 #ifdef OPENMVG_USE_OPENMP
   options.num_threads = omp_get_max_threads();
+#if CERES_VERSION_MAJOR < 2
   options.num_linear_solver_threads = omp_get_max_threads();
+#endif
 #endif // OPENMVG_USE_OPENMP
   options.minimizer_progress_to_stdout = false;
   options.logging_type = ceres::SILENT;
   options.max_num_iterations = max_iterations;
   options.function_tolerance = function_tolerance;
   options.parameter_tolerance = parameter_tolerance;
-  
+
   // Since the problem is sparse, use a sparse solver iff available
   if (ceres::IsSparseLinearAlgebraLibraryTypeAvailable(ceres::SUITE_SPARSE))
   {
